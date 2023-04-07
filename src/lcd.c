@@ -117,11 +117,6 @@ void lcd_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t c) {
 }
 
 void lcd_block(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint16_t color) {
-  //  for (uint8_t y = y0; y < y1; ++y) {
-  //    for (uint8_t x = x0; x < x1; ++x) {
-  //      lcd_pixel(x, y, color);
-  //    }
-  //  }
   sendCommands((uint8_t[]){
                    ST7735_CASET, 4, // Column (4 arguments)
                    0U,              // start (upper 8 bits)
@@ -147,6 +142,29 @@ void lcd_block(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint16_t color) {
     do {
     } while (!(SPSR & (1U << SPIF))); // wait for end of transmission
     SPDR = color;                     // Place data to be sent on registers
+    do {
+    } while (!(SPSR & (1U << SPIF))); // wait for end of transmission
+  }
+  set(LCD_PORT, LCD_TFT_CS); // pull CS high to end communication
+}
+
+// Vertical line.
+void lcd_look_to_the_cookie(uint8_t x0, uint8_t y0, uint8_t x1, uint16_t color1, uint16_t color2) {
+  sendCommands((uint8_t[]){ST7735_CASET, 4, 0U, x0, 0U, x1, 0U, ST7735_RASET, 4, 0U, y0, 0U, y0 + 1, 0U, ST7735_RAMWR, 0, 0}, 3);
+  clear(LCD_PORT, LCD_TFT_CS); // pull CS low to start communication
+  for (uint16_t ij = 0; ij != (uint16_t)(x1 - x0 + 1); ++ij) {
+    SPDR = (color1 >> 8U); // Place data to be sent on registers
+    do {
+    } while (!(SPSR & (1U << SPIF))); // wait for end of transmission
+    SPDR = color1;                    // Place data to be sent on registers
+    do {
+    } while (!(SPSR & (1U << SPIF))); // wait for end of transmission
+  }
+  for (uint16_t ij = 0; ij != (uint16_t)(x1 - x0 + 1); ++ij) {
+    SPDR = (color2 >> 8U); // Place data to be sent on registers
+    do {
+    } while (!(SPSR & (1U << SPIF))); // wait for end of transmission
+    SPDR = color2;                    // Place data to be sent on registers
     do {
     } while (!(SPSR & (1U << SPIF))); // wait for end of transmission
   }

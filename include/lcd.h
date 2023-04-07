@@ -15,6 +15,7 @@
 void lcd_pixel(uint8_t x, uint8_t y, uint16_t color);
 void lcd_circle(uint8_t x0, uint8_t y0, uint8_t radius, uint16_t color);
 void lcd_block(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint16_t color);
+void lcd_look_to_the_cookie(uint8_t x0, uint8_t y0, uint8_t x1, uint16_t color1, uint16_t color2);
 void lcd_set_screen(uint16_t color);
 void lcd_string(uint8_t x, uint8_t y, char const* str, uint16_t fg, uint16_t bg);
 

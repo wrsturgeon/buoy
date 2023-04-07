@@ -49,17 +49,33 @@ uint8_t is_heartbeat(uint16_t v) {
   ++dotted;
   if (dotted == NDOTTED) { dotted = 0; }
 
+  uint8_t tgt;
+  uint8_t pen = (((uint8_t)(128U ^ hist[0])) >> 2);
   for (uint8_t i = 0; i != 127; ++i) {
-    lcd_pixel(((uint8_t)(128U ^ hist[i])) >> 2, i, BACKGROUND); // Erase the last one
-    hist[i] = hist[i + 1];
-    lcd_pixel(((uint8_t)(128U ^ hist[i])) >> 2, i, PULSELINE); // Draw the new one
+    tgt = ((uint8_t)(128U ^ (hist[i] = hist[i + 1]))) >> 2;
+    if (pen == tgt) {
+      lcd_look_to_the_cookie(pen, i, tgt, PULSELINE, BACKGROUND);
+    } else if (pen > tgt) {
+      lcd_look_to_the_cookie(tgt, i, pen - 1, PULSELINE, BACKGROUND);
+    } else {
+      lcd_look_to_the_cookie(pen + 1, i, tgt, PULSELINE, BACKGROUND);
+    }
+    pen = tgt;
   }
-  lcd_pixel(((uint8_t)(128U ^ hist[127])) >> 2, 127, BACKGROUND);
+  // lcd_pixel(((uint8_t)(128U ^ hist[127])) >> 2, 127, BACKGROUND);
   {
     int16_t naive_sum = v - (runmean >> 1);
     hist[127] = (naive_sum < -128) ? -128 : ((naive_sum > 127 ? 127 : naive_sum));
   }
-  lcd_pixel(((uint8_t)(128U ^ hist[127])) >> 2, 127, PULSELINE);
+  // lcd_pixel(((uint8_t)(128U ^ hist[127])) >> 2, 127, PULSELINE);
+  tgt = ((uint8_t)(128U ^ hist[127])) >> 2;
+  if (pen == tgt) {
+    lcd_block(pen, 127, tgt, 127, PULSELINE);
+  } else if (pen > tgt) {
+    lcd_block(tgt, 127, pen - 1, 127, PULSELINE);
+  } else {
+    lcd_block(pen + 1, 127, tgt, 127, PULSELINE);
+  }
 
   if ((v << 1) > runmean) {
     ++runmean;
