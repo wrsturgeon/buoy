@@ -1,5 +1,5 @@
-# Mostafa Afr & Will Sturgeon
-## The _Heart_-Throbs ❤️
+# The _Heart_-Throbs ❤️
+## UPenn ESE 350 Final Project
 
 Notable features:
 - Scrolling display with interpolated lines, corrected _before_ displaying to pin the moving average, plus a real-time running peak (surprisingly difficult!), all fast enough to display in real time
