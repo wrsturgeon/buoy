@@ -81,6 +81,7 @@ uint8_t is_heartbeat(uint16_t v) {
     ++runmean;
   } else if ((v << 1) < runmean) {
     falling = 0;
+    PORTD &= ~(1U << PD2); // Buzzer lo
     --runmean;
   }
   if ((hist[127] << 3) > runpeak) {
@@ -105,6 +106,7 @@ uint8_t is_heartbeat(uint16_t v) {
 
   if ((!falling) && ((hist[127] << 4) > runpeak)) { // NOTE <<4 NOT <<3: only testing for > half-peak
     falling = 1;
+    PORTD |= (1U << PD2); // Buzzer hi
     return 1;
   }
   return 0;

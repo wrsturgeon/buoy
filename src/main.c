@@ -5,23 +5,21 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
-#define LG_ADCN 6U // should always be a power of 2
+#define LG_ADC1N 6U // 64x 10-bit numbers -> 16-bit sum guaranteed not to overflow
+#define LG_ADC2N 1U // More arbitrary: aggregate _those means_ ^^^, just to slow down
 #define LG_HBUF 4U
 
-static uint8_t tcnt1ovf;
-static uint16_t adchist[1U << LG_ADCN];
-static uint8_t adcvis = 0;
-static CircleBuffer_uint16_16 heartbuf;
+volatile static uint8_t tcnt1ovf;
+volatile static CircleBuffer_uint16_64 adcb1;
+volatile static CircleBuffer_uint16_2 adcb2;
+volatile static uint8_t adccompute;
+volatile static CircleBuffer_uint16_16 heartbuf;
 
 ISR(TIMER1_OVF_vect) { ++tcnt1ovf; }
 
 ISR(ADC_vect) {
-  static uint8_t adci = 0;
-  adchist[adci++] = ADCL + (((uint16_t)(ADCH)) << 8U);
-  if (adci == (1U << LG_ADCN)) {
-    adci = 0;
-    adcvis = 1;
-  }
+  cbuf_push_uint16_64(ADCL + (((uint16_t)(ADCH)) << 8U), &adcb1);
+  if (!adcb1.i) { adccompute = 1; }
 }
 
 __attribute__((always_inline)) uint16_t time_since_last_beat_62500sec(void) {
@@ -41,11 +39,17 @@ __attribute__((always_inline)) uint16_t time_since_last_beat_62500sec(void) {
   return last - lastlast;
 }
 
-__attribute__((always_inline)) void beep(void) {
-  PORTD |= (1U << PD2);
-  _delay_ms(1);
-  PORTD &= ~(1U << PD2);
-}
+// __attribute__((always_inline)) void beep(void) {
+//   // for (uint8_t i = 0; i < 16; ++i) {
+//   //   PORTD |= (1U << PD2);
+//   //   _delay_ms(1);
+//   //   PORTD &= ~(1U << PD2);
+//   //   _delay_ms(1);
+//   // }
+//   PORTD |= (1U << PD2);
+//   _delay_ms(1);
+//   PORTD &= ~(1U << PD2);
+// }
 
 int main(void) {
 
@@ -60,9 +64,9 @@ int main(void) {
   TCCR1B |= (1U << CS10);
   TIMSK1 |= (1U << TOIE1);
 
-  // Speaker (D2)
+  // Buzzer (D2)
   DDRD |= (1U << DDD2);
-  PORTD &= ~(1U << PD2);
+  PORTD &= ~(1U << PD2); // Begin lo
 
   // ADC
   PRR &= ~(1U << PRADC);
@@ -81,18 +85,24 @@ int main(void) {
   uint16_t adcval;
   do {
     do {
-    } while (!adcvis);
-    adcvis = adcval = 0;
-    for (uint8_t i = 0; i != (1U << LG_ADCN); ++i) { adcval += adchist[i]; };
-    if (is_heartbeat(adcval >>= LG_ADCN) /* also displays */) {
+    } while (!adccompute);
+    adccompute = 0; // This, for some reason, stops the entire program from running?!?!
+    adcval = 0;
+    for (uint8_t i = 0; i != (1U << LG_ADC1N); ++i) { adcval += cbuf_get_uint16_64(i, &adcb1); }
+    cbuf_push_uint16_2(adcval >> LG_ADC1N, &adcb2);
+    if (adcb2.i) { continue; } // Display only after a full cycle
+
+    adcval = 0;
+    for (uint8_t i = 0; i != (1U << LG_ADC2N); ++i) { adcval += cbuf_get_uint16_2(i, &adcb2); };
+    if (is_heartbeat(adcval >>= LG_ADC2N) /* also displays */) {
       cbuf_push_uint16_16(time_since_last_beat_62500sec(), &heartbuf);
       uint16_t mean;
       {
         uint32_t sum = 0;
-        for (uint16_t i = 0; i < (1U << LG_HBUF); ++i) { sum += heartbuf.values[i]; }
+        for (uint16_t i = 0; i < (1U << LG_HBUF); ++i) { sum += cbuf_get_uint16_16(i, &heartbuf); }
         mean = (sum >> LG_HBUF);
       }
-      beep();
+      // beep();
       // We want an operation s.t.
       // (X) / (sec / 62,500) = beats / minute
       // 62,500 X / sec = beats / (60 sec)
