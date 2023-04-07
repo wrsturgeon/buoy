@@ -3,3 +3,5 @@
 /.vscode/
 /CMakeListsPrivate.txt
 /cmake-build-*/ 
+/esp32/build/
+/esp32/.vscode
