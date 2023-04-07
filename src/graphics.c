@@ -19,31 +19,34 @@ void vis_pulse(uint16_t v) {
   static int16_t runpeak = 0;
   static uint8_t peakidx = 0;
 
+  // lcd_draw_block(MIDPOINT, 0, MIDPOINT, 127, PULSEMEAN);
+
   for (uint8_t i = 0; i != 127; ++i) {
-    lcd_draw_pixel((128U ^ hist[i]) >> 2, i, BACKGROUND); // Erase the last one
+    lcd_draw_pixel(((uint8_t)(128U ^ hist[i])) >> 2, i, BACKGROUND); // Erase the last one
     hist[i] = hist[i + 1];
-    lcd_draw_pixel((128U ^ hist[i]) >> 2, i, PULSELINE); // Draw the new one
+    lcd_draw_pixel(((uint8_t)(128U ^ hist[i])) >> 2, i, PULSELINE); // Draw the new one
   }
-  lcd_draw_pixel((128U ^ hist[127]) >> 2, 127, BACKGROUND);
+  lcd_draw_pixel(((uint8_t)(128U ^ hist[127])) >> 2, 127, BACKGROUND);
   {
     int16_t naive_sum = v - (runmean >> 1);
     hist[127] = (naive_sum < -128) ? -128 : ((naive_sum > 127 ? 127 : naive_sum));
   }
-  lcd_draw_pixel((128U ^ hist[127]) >> 2, 127, PULSELINE);
+  lcd_draw_pixel(((uint8_t)(128U ^ hist[127])) >> 2, 127, PULSELINE);
 
-  lcd_draw_block((1024U ^ runpeak) >> 5, 0, (1024U ^ runpeak) >> 5, 127, BACKGROUND); // Erase the last peak
   if ((v << 1) > runmean) {
     ++runmean;
   } else if ((v << 1) < runmean) {
     --runmean;
   }
   if ((hist[127] << 3) > runpeak) {
+    lcd_draw_block(((uint8_t)(128U ^ (runpeak >> 3))) >> 2, 0, ((uint8_t)(128U ^ (runpeak >> 3))) >> 2, 127, BACKGROUND); // Erase the last peak
     runpeak = (hist[127] << 3);
     peakidx = 127;
   } else if (peakidx) {
     --peakidx;
   } else {
-    // unfortunately, iterate & find the new peak
+    // Iterate & find the new peak (unfortunately)
+    lcd_draw_block(((uint8_t)(128U ^ (runpeak >> 3))) >> 2, 0, ((uint8_t)(128U ^ (runpeak >> 3))) >> 2, 127, BACKGROUND); // Erase the last peak
     runpeak = (hist[0] << 3);
     peakidx = 0;
     for (uint8_t i = 1; i != 128; ++i) {
@@ -53,6 +56,5 @@ void vis_pulse(uint16_t v) {
       }
     }
   }
-  lcd_draw_block(MIDPOINT, 0, MIDPOINT, 127, PULSEMEAN);
-  lcd_draw_block((1024U ^ runpeak) >> 5, 0, (1024U ^ runpeak) >> 5, 127, PULSEPEAK);
+  lcd_draw_block(((uint8_t)(128U ^ (runpeak >> 3))) >> 2, 0, ((uint8_t)(128U ^ (runpeak >> 3))) >> 2, 127, PULSEPEAK);
 }
