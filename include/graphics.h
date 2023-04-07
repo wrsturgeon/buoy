@@ -5,8 +5,8 @@
 
 void init_graphics(void);
 
-void vis_pulse(uint16_t v);
+uint8_t is_heartbeat(uint16_t v);
 
-void update_bpm(uint16_t);
+void update_bpm(uint16_t /* just in a hell of a case */);
 
 #endif // BUOY_INCLUDE_GRAPHICS_H

@@ -22,15 +22,15 @@ void init_graphics(void) {
   big_B(HZMAX - PADDING, PADDING + 4 * (BIGASCII_W + 1), RED);
   big_P(HZMAX - PADDING, PADDING + 5 * (BIGASCII_W + 1), RED);
   big_M(HZMAX - PADDING, PADDING + 6 * (BIGASCII_W + 1), RED);
-  update_bpm((uint16_t)-1);
 }
 
-void vis_pulse(uint16_t v) {
+uint8_t is_heartbeat(uint16_t v) {
   static int8_t hist[128];
   static uint16_t runmean = 1024;
   static int16_t runpeak = 0;
   static uint8_t peakidx = 0;
   static uint8_t dotted = 0;
+  static uint8_t falling = 0; // if we recorded a heartbeat & are now waiting for this "bump" to finish
 
   // Inlined part of `lcd_block` for a dotted line:
   sendCommands((uint8_t[]){ST7735_CASET, 4, 0U, MIDPOINT, 0U, MIDPOINT, 0U, ST7735_RASET, 4, 0U, 0U, 0U, 127U, 0U, ST7735_RAMWR, 0U, 0U}, 3);
@@ -64,6 +64,7 @@ void vis_pulse(uint16_t v) {
   if ((v << 1) > runmean) {
     ++runmean;
   } else if ((v << 1) < runmean) {
+    falling = 0;
     --runmean;
   }
   if ((hist[127] << 3) > runpeak) {
@@ -85,6 +86,12 @@ void vis_pulse(uint16_t v) {
     }
   }
   lcd_block(((uint8_t)(128U ^ (runpeak >> 3))) >> 2, 0, ((uint8_t)(128U ^ (runpeak >> 3))) >> 2, 127, PULSEPEAK);
+
+  if ((!falling) && ((hist[127] << 4) > runpeak)) { // NOTE <<4 NOT <<3: only testing for > half-peak
+    falling = 1;
+    return 1;
+  }
+  return 0;
 }
 
 void update_bpm(uint16_t /* just in a hell of a case */ bpm) {

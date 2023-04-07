@@ -57,6 +57,48 @@ IMPLFN(question) {
   lcd_pixel(x - 2, y + 1, color);
 }
 
+IMPLFN(lparen) {
+  lcd_pixel(x, y + 5, color);
+  lcd_pixel(x, y + 6, color);
+  lcd_pixel(x - 1, y + 4, color);
+  lcd_pixel(x - 1, y + 5, color);
+  lcd_pixel(x - 2, y + 4, color);
+  lcd_pixel(x - 2, y + 5, color);
+  lcd_pixel(x - 3, y + 4, color);
+  lcd_pixel(x - 3, y + 5, color);
+  lcd_pixel(x - 4, y + 4, color);
+  lcd_pixel(x - 4, y + 5, color);
+  lcd_pixel(x - 5, y + 4, color);
+  lcd_pixel(x - 5, y + 5, color);
+  lcd_pixel(x - 6, y + 4, color);
+  lcd_pixel(x - 6, y + 5, color);
+  lcd_pixel(x - 7, y + 4, color);
+  lcd_pixel(x - 7, y + 5, color);
+  lcd_pixel(x - 8, y + 5, color);
+  lcd_pixel(x - 8, y + 6, color);
+}
+
+IMPLFN(rparen) {
+  lcd_pixel(x, y, color);
+  lcd_pixel(x, y + 1, color);
+  lcd_pixel(x - 1, y + 1, color);
+  lcd_pixel(x - 1, y + 2, color);
+  lcd_pixel(x - 2, y + 1, color);
+  lcd_pixel(x - 2, y + 2, color);
+  lcd_pixel(x - 3, y + 1, color);
+  lcd_pixel(x - 3, y + 2, color);
+  lcd_pixel(x - 4, y + 1, color);
+  lcd_pixel(x - 4, y + 2, color);
+  lcd_pixel(x - 5, y + 1, color);
+  lcd_pixel(x - 5, y + 2, color);
+  lcd_pixel(x - 6, y + 1, color);
+  lcd_pixel(x - 6, y + 2, color);
+  lcd_pixel(x - 7, y + 1, color);
+  lcd_pixel(x - 7, y + 2, color);
+  lcd_pixel(x - 8, y, color);
+  lcd_pixel(x - 8, y + 1, color);
+}
+
 IMPLFN(0) {
   // Symmetric in both dimensions
   for (uint8_t i = 1; i != 8; ++i) {
