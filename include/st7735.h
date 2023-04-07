@@ -105,12 +105,12 @@
 void Delay_ms(unsigned int n);
 void lcd_init(void);
 void sendCommands(uint8_t const* cmds, uint8_t length);
-void LCD_setAddr(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);
+void lcd_setAddr(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);
 void SPI_ControllerTx(uint8_t data);
 void SPI_ControllerTx_stream(uint8_t stream);
 void SPI_ControllerTx_16bit(uint16_t data);
 void SPI_ControllerTx_16bit_stream(uint16_t data);
-void LCD_brightness(uint8_t intensity);
-void LCD_rotate(uint8_t r);
+void lcd_brightness(uint8_t intensity);
+void lcd_rotate(uint8_t r);
 
 #endif // BUOY_INCLUDE_ST7735_H

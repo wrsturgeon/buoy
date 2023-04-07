@@ -25,18 +25,18 @@ static void lcd_pin_init(void) {
   set(LCD_PORT, LCD_RST);
 }
 
-__attribute__((always_inline)) static void SPI_Controller_Init(void) {
+static void SPI_Controller_Init(void) {
   SPCR = (1U << SPE) | (1U << MSTR); // Enable SPI, Master, set clock rate fck/64
   SPSR = (1U << SPI2X);              // SPI 2X speed
 }
 
-__attribute__((always_inline)) void Delay_ms(unsigned int n) {
+void Delay_ms(unsigned int n) {
   while (n--) {
     _delay_ms(1);
   }
 }
 
-__attribute__((always_inline)) void SPI_ControllerTx(uint8_t data) {
+void SPI_ControllerTx(uint8_t data) {
   clear(LCD_PORT, LCD_TFT_CS); // CS pulled low to start communication
 
   SPI_ControllerTx_stream(data);
@@ -44,13 +44,13 @@ __attribute__((always_inline)) void SPI_ControllerTx(uint8_t data) {
   set(LCD_PORT, LCD_TFT_CS); // set CS to high
 }
 
-__attribute__((always_inline)) void SPI_ControllerTx_stream(uint8_t stream) {
+void SPI_ControllerTx_stream(uint8_t stream) {
   SPDR = stream; // Place data to be sent on registers
   while (!(SPSR & (1U << SPIF)))
     ; // wait for end of transmission
 }
 
-__attribute__((always_inline)) void SPI_ControllerTx_16bit(uint16_t data) {
+void SPI_ControllerTx_16bit(uint16_t data) {
   uint8_t temp = data >> 8;
   clear(LCD_PORT, LCD_TFT_CS); // CS pulled low to start communication
 
@@ -64,7 +64,7 @@ __attribute__((always_inline)) void SPI_ControllerTx_16bit(uint16_t data) {
   set(LCD_PORT, LCD_TFT_CS); // set CS to high
 }
 
-__attribute__((always_inline)) void SPI_ControllerTx_16bit_stream(uint16_t data) {
+void SPI_ControllerTx_16bit_stream(uint16_t data) {
   uint8_t temp = data >> 8;
 
   SPDR = temp; // Place data to be sent on registers
@@ -250,7 +250,7 @@ void sendCommands(uint8_t const* cmds, uint8_t length) {
   set(LCD_PORT, LCD_TFT_CS); // set CS to high
 }
 
-void LCD_setAddr(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1) {
+void lcd_setAddr(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1) {
   sendCommands((uint8_t[]){
                    ST7735_CASET, 4, // Column (4 arguments)
                    0U,              // start (upper 8 bits)
@@ -272,11 +272,11 @@ void LCD_setAddr(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1) {
                3);
 }
 
-__attribute__((always_inline)) void LCD_brightness(uint8_t intensity) {
+void lcd_brightness(uint8_t intensity) {
   OCR0A = intensity; // Set PWM value
 }
 
-void LCD_rotate(uint8_t r) {
+void lcd_rotate(uint8_t r) {
   uint8_t madctl = 0;
   uint8_t rotation = r % 4; // can't be higher than 3
 

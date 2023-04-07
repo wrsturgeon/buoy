@@ -1,13 +1,29 @@
+#include "graphics.h"
+#include "uart.h"
+
 #include <avr/interrupt.h>
 
+#define LG_ADCN 6U // should always be a power of 2
+
+static uint16_t adchist[1U << LG_ADCN];
+static uint8_t adcvis = 0;
+
 ISR(ADC_vect) {
-  // TODO
+  static uint8_t adci = 0;
+  adchist[adci++] = ADCL + (((uint16_t)(ADCH)) << 8U);
+  if (adci == (1U << LG_ADCN)) {
+    adci = 0;
+    adcvis = 1;
+  }
 }
 
 int main(void) {
 
   // Disable interrupts during the crucial initialization period
   cli();
+
+  // Initialize serial
+  uart_init();
 
   // ADC
   PRR &= ~(1U << PRADC);
@@ -21,5 +37,20 @@ int main(void) {
   // Re-enable interrupts
   sei();
 
-  // TODO
+  init_graphics();
+
+  uint16_t adcval;
+  do {
+    //    do {
+    //    } while (!adcvis);
+    adcvis = adcval = 0;
+    for (uint8_t i = 0; i != (1U << LG_ADCN); ++i) { adcval += adchist[i]; };
+    vis_pulse(adcval >>= LG_ADCN);
+    // uart_char('0' + (adcval / 1000U));
+    // uart_char('0' + ((adcval / 100U) % 10U));
+    // uart_char('0' + ((adcval / 10U) % 10U));
+    // uart_char('0' + (adcval % 10U));
+    // uart_char('\r');
+    // uart_char('\n');
+  } while (1);
 }
