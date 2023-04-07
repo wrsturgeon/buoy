@@ -7,6 +7,7 @@
 
 static uint16_t adchist[1U << LG_ADCN];
 static uint8_t adcvis = 0;
+static uint16_t heartbpm = 0;
 
 ISR(ADC_vect) {
   static uint8_t adci = 0;
@@ -22,7 +23,7 @@ int main(void) {
   // Disable interrupts during the crucial initialization period
   cli();
 
-  // Initialize serial
+  // Initialize serial communication
   uart_init();
 
   // ADC
@@ -52,5 +53,6 @@ int main(void) {
     // uart_char('0' + (adcval % 10U));
     // uart_char('\r');
     // uart_char('\n');
+    update_bpm(heartbpm++);
   } while (1);
 }

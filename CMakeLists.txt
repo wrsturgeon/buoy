@@ -30,4 +30,4 @@ add_custom_target(
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-add_executable(Z_DUMMY_TARGET ${SRC_LIST} src/lcd.c include/lcd.h src/st7735.c include/st7735.h include/ascii.h src/circlebuffer.c include/fake_pulse.h include/graphics.h src/graphics.c include/circlebuffer.h include/uart.h src/uart.c)
+add_executable(Z_DUMMY_TARGET ${SRC_LIST} src/lcd.c include/lcd.h src/st7735.c include/st7735.h include/ascii.h src/circlebuffer.c include/graphics.h src/graphics.c include/circlebuffer.h include/uart.h src/uart.c include/big-ascii.h src/big-ascii.c)
