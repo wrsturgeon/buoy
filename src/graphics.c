@@ -7,6 +7,7 @@
 #define PULSEMEAN RGB565(0, 0, 255)
 #define PULSEPEAK RGB565(0, 255, 0)
 #define MIDPOINT 31
+#define NDOTTED 4
 
 void init_graphics(void) {
   lcd_init();
@@ -18,8 +19,24 @@ void vis_pulse(uint16_t v) {
   static uint16_t runmean = 1024;
   static int16_t runpeak = 0;
   static uint8_t peakidx = 0;
+  static uint8_t dotted = 0;
 
-  // lcd_draw_block(MIDPOINT, 0, MIDPOINT, 127, PULSEMEAN);
+  // Inlined part of `lcd_draw_block` for a dotted line:
+  sendCommands((uint8_t[]){ST7735_CASET, 4, 0U, MIDPOINT, 0U, MIDPOINT, 0U, ST7735_RASET, 4, 0U, 0U, 0U, 127U, 0U, ST7735_RAMWR, 0U, 0U}, 3);
+  clear(LCD_PORT, LCD_TFT_CS); // pull CS low to start communication
+  for (uint16_t ij = 0; ij != 128; ++ij) {
+    SPDR = ((!dotted) - 1);
+    do {
+    } while (!(SPSR & (1U << SPIF)));
+    SPDR = ((!dotted) - 1);
+    do {
+    } while (!(SPSR & (1U << SPIF)));
+    ++dotted;
+    if (dotted == NDOTTED) { dotted = 0; }
+  }
+  set(LCD_PORT, LCD_TFT_CS); // pull CS high to end communication
+  ++dotted;
+  if (dotted == NDOTTED) { dotted = 0; }
 
   for (uint8_t i = 0; i != 127; ++i) {
     lcd_draw_pixel(((uint8_t)(128U ^ hist[i])) >> 2, i, BACKGROUND); // Erase the last one
