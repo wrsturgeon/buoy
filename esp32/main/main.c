@@ -1,3 +1,5 @@
+// Based on https://github.com/espressif/esp-idf/blob/master/examples/get-started/hello_world/main/hello_world_main.c
+
 #include "esp_chip_info.h"
 #include "esp_flash.h"
 #include "freertos/FreeRTOS.h"
@@ -13,7 +15,7 @@ void app_main(void) {
   esp_chip_info_t chip_info;
   uint32_t flash_size;
   esp_chip_info(&chip_info);
-  printf("This is %s chip with %d CPU core(s), WiFi%s%s%s, ", CONFIG_IDF_TARGET, chip_info.cores, (chip_info.features & CHIP_FEATURE_BT) ? "/BT" : "", (chip_info.features & CHIP_FEATURE_BLE) ? "/BLE" : "", (chip_info.features & CHIP_FEATURE_IEEE802154) ? ", 802.15.4 (Zigbee/Thread)" : "");
+  printf("Running on a %d-core %s with WiFi%s%s%s, ", chip_info.cores, CONFIG_IDF_TARGET, (chip_info.features & CHIP_FEATURE_BT) ? "/BT" : "", (chip_info.features & CHIP_FEATURE_BLE) ? "/BLE" : "", (chip_info.features & CHIP_FEATURE_IEEE802154) ? ", 802.15.4 (Zigbee/Thread)" : "");
 
   unsigned major_rev = chip_info.revision / 100;
   unsigned minor_rev = chip_info.revision % 100;

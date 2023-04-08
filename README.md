@@ -8,3 +8,4 @@ Notable features:
 - Custom font by hand! Writes sideways as well!
 - Displaying integers uses an array of function pointers, choosing an integer in O(1)
 - Hardware filtering (cred to Mostafa)
+- Automatically write VSCode JSON when compiling for mouse-over config info
