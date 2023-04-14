@@ -12,13 +12,13 @@
 
 static void lcd_pin_init(void) {
   // Setup digital pins
-  LCD_DDR |= (1U << LCD_DC) | (1U << LCD_RST) | (1U << LCD_TFT_CS) | (1U << LCD_MOSI) | (1U << LCD_SCK); // Set up output pins
-  LCD_LITE_DDR |= (1U << LCD_LITE);                                                                      // Set up output pins
+  LCD_DDR |= (1ULL << LCD_DC) | (1ULL << LCD_RST) | (1ULL << LCD_TFT_CS) | (1ULL << LCD_MOSI) | (1ULL << LCD_SCK); // Set up output pins
+  LCD_LITE_DDR |= (1ULL << LCD_LITE);                                                                              // Set up output pins
 
   // Setup PWM for LCD Backlight
-  TCCR0A |= (1U << COM0A1) | (1U << WGM01) | (1U << WGM00); // Fast PWM: clear OC0A on match, set at bottom
-  TCCR0B |= (1U << CS02);                                   // clk/1024/256=244Hz
-  OCR0A = 127;                                              // Set starting PWM value
+  TCCR0A |= (1ULL << COM0A1) | (1ULL << WGM01) | (1ULL << WGM00); // Fast PWM: clear OC0A on match, set at bottom
+  TCCR0B |= (1ULL << CS02);                                       // clk/1024/256=244Hz
+  OCR0A = 127;                                                    // Set starting PWM value
 
   // Enable LCD by setting RST high
   _delay_ms(50);
@@ -26,8 +26,8 @@ static void lcd_pin_init(void) {
 }
 
 static void SPI_Controller_Init(void) {
-  SPCR = (1U << SPE) | (1U << MSTR); // Enable SPI, Master, set clock rate fck/64
-  SPSR = (1U << SPI2X);              // SPI 2X speed
+  SPCR = (1ULL << SPE) | (1ULL << MSTR); // Enable SPI, Master, set clock rate fck/64
+  SPSR = (1ULL << SPI2X);                // SPI 2X speed
 }
 
 void Delay_ms(unsigned int n) {
@@ -46,7 +46,7 @@ void SPI_ControllerTx(uint8_t data) {
 
 void SPI_ControllerTx_stream(uint8_t stream) {
   SPDR = stream; // Place data to be sent on registers
-  while (!(SPSR & (1U << SPIF)))
+  while (!(SPSR & (1ULL << SPIF)))
     ; // wait for end of transmission
 }
 
@@ -55,10 +55,10 @@ void SPI_ControllerTx_16bit(uint16_t data) {
   clear(LCD_PORT, LCD_TFT_CS); // CS pulled low to start communication
 
   SPDR = temp; // Place data to be sent on registers
-  while (!(SPSR & (1U << SPIF)))
+  while (!(SPSR & (1ULL << SPIF)))
     ;          // wait for end of transmission
   SPDR = data; // Place data to be sent on registers
-  while (!(SPSR & (1U << SPIF)))
+  while (!(SPSR & (1ULL << SPIF)))
     ; // wait for end of transmission
 
   set(LCD_PORT, LCD_TFT_CS); // set CS to high
@@ -68,10 +68,10 @@ void SPI_ControllerTx_16bit_stream(uint16_t data) {
   uint8_t temp = data >> 8;
 
   SPDR = temp; // Place data to be sent on registers
-  while (!(SPSR & (1U << SPIF)))
+  while (!(SPSR & (1ULL << SPIF)))
     ;          // wait for end of transmission
   SPDR = data; // Place data to be sent on registers
-  while (!(SPSR & (1U << SPIF)))
+  while (!(SPSR & (1ULL << SPIF)))
     ; // wait for end of transmission
 }
 
