@@ -1,8 +1,9 @@
-#include "lcd.h"
+#include "bitbang/lcd.h"
 
 #include <esp_chip_info.h>
 #include <esp_flash.h>
 #include <esp_system.h>
+#include <rom/ets_sys.h>
 #include <sdkconfig.h>
 
 #include <ctype.h>
@@ -45,7 +46,27 @@ void app_main(void) {
         esp_get_minimum_free_heap_size());
   }
 
+  spi_init();
   lcd_init();
+
+  ets_delay_us(100000); // 0.1s
+
+#define x0 32
+#define y0 32
+#define x1 64
+#define y1 64
+  spi_open();
+  SPI_COMMAND(ST7735_CASET, 4, 0, 0, x0, 0, x1);
+  SPI_COMMAND(ST7735_RASET, 4, 0, 0, y0, 0, y1);
+  SPI_COMMAND(ST7735_RAMWR, 0, 5);
+  for (uint16_t ij = 0; ij != (uint16_t)(((uint16_t)(y1 - y0 + 1)) * (uint16_t)(x1 - x0 + 1)); ++ij) { spi_send_16b(0b1111100000000000); }
+  spi_close();
+#undef y1
+#undef x1
+#undef y0
+#undef x0
+
+  ets_delay_us(1000000); // 1s
 
   // GPIO_ENABLE_OUTPUT(SPEAKER_PIN);
   // do {
@@ -58,9 +79,7 @@ void app_main(void) {
   //   ets_delay_us(1000000);
   // } while (1);
 
-#ifndef NDEBUG
-  assert(!SPI_COMM_OPEN);
-#endif
+  ets_delay_us(1000000); // 1s
 
   esp_restart();
 }

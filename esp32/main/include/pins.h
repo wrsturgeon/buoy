@@ -20,21 +20,7 @@
 #define FEATHER_32 32
 #define FEATHER_14 14
 
-#define FEATHER_HSPI_BUS 1   // HSPI = SPI2_HOST = 1 (ig 0-indexed?); see ~/esp/esp-idf/components/hal/include/hal/spi_types.h:22 and https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/spi_master.html
-#define FEATHER_HSPI_MISO 12 // aka Q
-#define FEATHER_HSPI_MOSI 13 // aka D
-#define FEATHER_HSPI_CLK 14  // aka SCK
-#define FEATHER_HSPI_CS 15   // chip select
-
-#define LCD_SPI_HOST FEATHER_HSPI // this also changes all SPI(...) invocations! handy innit
-
-#define SPI(...) SPI_LITERAL(LCD_SPI_HOST, __VA_ARGS__)
-#define SPI_LITERAL(HOST, ...) SPI_LITERAL_LITERAL(HOST, __VA_ARGS__)
-#define SPI_LITERAL_LITERAL(HOST, ...) HOST##_##__VA_ARGS__
-
-// MOSI, MISO, SCLK, & CS are covered in `spi.h` (above)
-#define LCD_RST FEATHER_27
-#define LCD_DC FEATHER_33
-#define LCD_BACKLIGHT FEATHER_32
+#define FEATHER_SCL 20
+#define FEATHER_SDA 22
 
 #endif // PINS_H

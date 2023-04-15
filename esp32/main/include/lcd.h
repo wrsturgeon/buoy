@@ -1,183 +1,177 @@
 #ifndef LCD_H
 #define LCD_H
 
-// Adafruit 358 + ST7735R
-// https://www.adafruit.com/product/358
-// https://cdn-shop.adafruit.com/datasheets/ST7735R_V0.2.pdf
+#include "ascii.h"
+#include "lcd-spi.h"
 
-#include "gpio.h"
-#include "pins.h"
-#include "spi.h"
+#include <stdint.h>
 
-#include <rom/ets_sys.h>
+// Converts 24b RGB to 16b 5-6-5 RGB (respectively) with some bit trickery
+#define RGB565(R, G, B) (((uint16_t)(((uint16_t)(((uint8_t)(R)) & 0b11111000U)) << 8U)) | ((uint16_t)(((uint16_t)(((uint8_t)(G)) & 0b11111100U)) << 5U)) | (((uint8_t)(B)) >> 3U))
+// #define RGB565(R,G,B) ((((31*((R)+4))/255)<<11) | (((63*((G)+2))/255)<<5) | ((31*((B)+4))/255))
+#define RED RGB565(255, 0, 0)
+#define GREEN RGB565(0, 255, 0)
+#define BLUE RGB565(0, 0, 255)
+#define WHITE RGB565(255, 255, 255)
+#define BLACK RGB565(0, 0, 0)
 
-#define LCDW (160U)
-#define LCDH (128U)
-#define LCDA (LCDW * LCDH)
-
-#define A358_OK (0U)
-#define A358_MISC_ERROR (1U)
-#define A358_RESPONSE_TIMEOUT (2U)
-#define A358_RESPONSE_BUSY (3U)
-#define A358_READ_TIMEOUT (4U)
-#define A358_WRITE_TIMEOUT (5U)
-#define A358_RESPONSE_CRC_ERROR (6U)
-#define A358_READ_CRC_ERROR (7U)
-#define A358_WRITE_CRC_ERROR (8U)
-#define A358_ILLEGAL_COMMAND (9U)
-#define A358_WRITE_ERROR (10U)
-#define A358_OUT_OF_BOUNDS (11U)
-
-#define ST7735_NOP (0x00U)
-#define ST7735_SWRESET (0x01U)
-#define ST7735_RDDID (0x04U)
-#define ST7735_RDDST (0x09U)
-#define ST7735_SLPIN (0x10U)
-#define ST7735_SLPOUT (0x11U)
-#define ST7735_PTLON (0x12U)
-#define ST7735_NORON (0x13U)
-#define ST7735_INVOFF (0x20U)
-#define ST7735_INVON (0x21U)
-#define ST7735_DISPOFF (0x28U)
-#define ST7735_DISPON (0x29U)
-#define ST7735_CASET (0x2AU)
-#define ST7735_RASET (0x2BU)
-#define ST7735_RAMWR (0x2CU)
-#define ST7735_RAMRD (0x2EU)
-#define ST7735_PTLAR (0x30U)
-#define ST7735_COLMOD (0x3AU)
-#define ST7735_MADCTL (0x36U)
-#define ST7735_FRMCTR1 (0xB1U)
-#define ST7735_FRMCTR2 (0xB2U)
-#define ST7735_FRMCTR3 (0xB3U)
-#define ST7735_INVCTR (0xB4U)
-#define ST7735_DISSET5 (0xB6U)
-#define ST7735_PWCTR1 (0xC0U)
-#define ST7735_PWCTR2 (0xC1U)
-#define ST7735_PWCTR3 (0xC2U)
-#define ST7735_PWCTR4 (0xC3U)
-#define ST7735_PWCTR5 (0xC4U)
-#define ST7735_VMCTR1 (0xC5U)
-#define ST7735_RDID1 (0xDAU)
-#define ST7735_RDID2 (0xDBU)
-#define ST7735_RDID3 (0xDCU)
-#define ST7735_RDID4 (0xDDU)
-#define ST7735_PWCTR6 (0xFCU)
-#define ST7735_GMCTRP1 (0xE0U)
-#define ST7735_GMCTRN1 (0xE1U)
-
-#define MADCTL_MY 0x80U
-#define MADCTL_MX 0x40U
-#define MADCTL_MV 0x20U
-#define MADCTL_ML 0x10U
-#define MADCTL_RGB 0x00U
-#define MADCTL_BGR 0x08U
-#define MADCTL_MH 0x04U
-
-static uint8_t LCD_INITIALIZED = 0;
-
-#define LCD_TRUST_SEND_COMMAND(COMMAND, NBYTE, DELAY, ...)                                                         \
-  do {                                                                                                             \
-    _Static_assert((NBYTE) == (sizeof((uint8_t[]){__VA_ARGS__})));                                                 \
-    _Static_assert((NBYTE) == (uint8_t)(NBYTE));                                                                   \
-    GPIO_PULL_LO(LCD_DC); /* indicates an incoming command */                                                      \
-    spi_trust_send_8b(COMMAND);                                                                                    \
-    GPIO_PULL_HI(LCD_DC); /* end of a command */                                                                   \
-    spi_trust_send_8b(sizeof((uint8_t[]){__VA_ARGS__}));                                                           \
-    __VA_OPT__(_Pragma("GCC unroll 256") for (uint8_t i = 0; i < (uint8_t)sizeof((uint8_t[]){__VA_ARGS__}); ++i) { \
-      spi_trust_send_8b(((uint8_t[]){__VA_ARGS__})[i]);                                                            \
-    })                                                                                                             \
-    if (DELAY) { ets_delay_us((((DELAY) == 255) ? 500 : DELAY) * 1000U); }                                         \
-  } while (0)
-
-__attribute__((always_inline)) inline static void lcd_init(void) {
-#ifndef NDEBUG
-  assert(!LCD_INITIALIZED);
-  LCD_INITIALIZED = 1;
-#endif
-
-  spi_init();
-
-  GPIO_ENABLE_OUTPUT(LCD_RST);
-  GPIO_ENABLE_OUTPUT(LCD_DC);
-  GPIO_ENABLE_OUTPUT(LCD_BACKLIGHT);
-
-  // Turn off the display
-  GPIO_PULL_LO(LCD_BACKLIGHT);
-
-  // Reset the ST7735
-  GPIO_PULL_HI(LCD_RST); // it looks like (in the Lab 4 starter code `lcd_pin_init`) we never turn this off...?
-  // vTaskDelay(100 / portTICK_PERIOD_MS);
-  // GPIO_PULL_LO(LCD_RST);
-  // vTaskDelay(100 / portTICK_PERIOD_MS);
-
-  // Initialize (from ESP-IDF example)
-  // while (lcd_init_cmds[cmd].databytes != 0xff) {
-  //   lcd_cmd(spi, lcd_init_cmds[cmd].cmd, false);
-  //   lcd_data(spi, lcd_init_cmds[cmd].data, lcd_init_cmds[cmd].databytes & 0x1F);
-  //   if (lcd_init_cmds[cmd].databytes & 0x80) {
-  //     vTaskDelay(100 / portTICK_PERIOD_MS);
-  //   }
-  //   cmd++;
-  // }
-
-  // SPI command sequence from ESE350 ST7735 library (almost verbatim):
-  spi_open_comm();
-  // Software reset. This first one is needed because of the RC reset.
-  LCD_TRUST_SEND_COMMAND(ST7735_SWRESET, 0, 150);
-  // Exit sleep mode
-  LCD_TRUST_SEND_COMMAND(ST7735_SLPOUT, 0, 255);
-  // Frame rate control 1
-  LCD_TRUST_SEND_COMMAND(ST7735_FRMCTR1, 3, 0, 0x01, 0x2C, 0x2D);
-  // Frame rate control 2
-  LCD_TRUST_SEND_COMMAND(ST7735_FRMCTR2, 3, 0, 0x01, 0x2C, 0x2D);
-  // Frame rate control 3
-  LCD_TRUST_SEND_COMMAND(ST7735_FRMCTR3, 6, 0, 0x01, 0x2C, 0x2D, 0x01, 0x2C, 0x2D);
-  // Display inversion
-  LCD_TRUST_SEND_COMMAND(ST7735_INVCTR, 1, 0, 0x07);
-  // Power control 1
-  LCD_TRUST_SEND_COMMAND(ST7735_PWCTR1, 3, 5, 0x0A, 0x02, 0x84);
-  // Power control 2
-  LCD_TRUST_SEND_COMMAND(ST7735_PWCTR2, 1, 5, 0xC5);
-  // Power control 3
-  LCD_TRUST_SEND_COMMAND(ST7735_PWCTR3, 2, 5, 0x0A, 0x00);
-  // Power control 4
-  LCD_TRUST_SEND_COMMAND(ST7735_PWCTR4, 2, 5, 0x8A, 0x2A);
-  // Power control 5
-  LCD_TRUST_SEND_COMMAND(ST7735_PWCTR5, 2, 5, 0x8A, 0xEE);
-  // Vcom control 1
-  LCD_TRUST_SEND_COMMAND(ST7735_VMCTR1, 1, 0, 0x0E);
-  // Inversion off
-  LCD_TRUST_SEND_COMMAND(ST7735_INVOFF, 0, 0);
-  // Memory Access control
-  LCD_TRUST_SEND_COMMAND(ST7735_MADCTL, 1, 0, 0xC8);
-  // Interface pixel format
-  LCD_TRUST_SEND_COMMAND(ST7735_COLMOD, 1, 0, 0x05);
-  // Column
-  LCD_TRUST_SEND_COMMAND(ST7735_CASET, 4, 0, 0x00, 0x00, 0x00, 0x7F);
-  // Page
-  LCD_TRUST_SEND_COMMAND(ST7735_RASET, 4, 0, 0x00, 0x00, 0x00, 0x9F);
-  // Positive Gamma
-  LCD_TRUST_SEND_COMMAND(ST7735_GMCTRP1, 16, 0, 0x02, 0x1C, 0x07, 0x12, 0x37, 0x32, 0x29, 0x2D, 0x29, 0x25, 0x2B, 0x39, 0x00, 0x01, 0x03, 0x10);
-  // Negative Gamma
-  LCD_TRUST_SEND_COMMAND(ST7735_GMCTRN1, 16, 0, 0x03, 0x1D, 0x07, 0x06, 0x2E, 0x2C, 0x29, 0x2D, 0x2E, 0x2E, 0x37, 0x3F, 0x00, 0x00, 0x02, 0x10);
-  // Normal display on
-  LCD_TRUST_SEND_COMMAND(ST7735_NORON, 0, 10);
-  // Set display on
-  LCD_TRUST_SEND_COMMAND(ST7735_DISPON, 0, 100);
-  // Default to rotation 3
-  LCD_TRUST_SEND_COMMAND(ST7735_MADCTL, 1, 10, MADCTL_MX | MADCTL_MV | MADCTL_RGB);
-  spi_close_comm();
-
-  // Turn on the display
-  GPIO_PULL_HI(LCD_BACKLIGHT);
+void lcd_pixel(uint8_t x, uint8_t y, uint16_t color) {
+  assert(LCD_INITIALIZED);
+  assert(!SPILL_IS_OPEN);
+  spill_open();
+  LCD_TRUST_SET_ADDR(x, y, x, y);
+  spill_send_16b_data(color);
+  spill_close();
 }
 
-#define LCD_TRUST_SET_ADDR(X0, Y0, X1, Y1)                    \
-  do {                                                        \
-    LCD_TRUST_SEND_COMMAND(ST7735_CASET, 4, 0, 0, X0, 0, X1); \
-    LCD_TRUST_SEND_COMMAND(ST7735_RASET, 4, 0, 0, Y0, 0, Y1); \
-    LCD_TRUST_SEND_COMMAND(ST7735_RAMWR, 0, 5);               \
-  } while (0)
+void lcd_char(uint8_t x, uint8_t y, uint16_t character, uint16_t fColor, uint16_t bColor) {
+  assert(LCD_INITIALIZED);
+  assert(!SPILL_IS_OPEN);
+  uint16_t row = character - 0x20; // Determine row of ASCII table starting at space
+  unsigned i, j;
+  for (i = 0; i < 5; i++) {
+    uint8_t pixels = ASCII[row][i]; // Go through the list of pixels
+    for (j = 0; j < 8; j++) {
+      if (((pixels >> j) & 1) == 1) {
+        lcd_pixel(x + i, y + j, fColor);
+      } else {
+        lcd_pixel(x + i, y + j, bColor);
+      }
+    }
+  }
+}
+
+void lcd_block(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint16_t color) {
+  assert(LCD_INITIALIZED);
+  assert(!SPILL_IS_OPEN);
+  spill_open();
+  LCD_TRUST_SET_ADDR(x0, y0, x1, y1);
+  for (uint16_t ij = 0; ij != (uint16_t)(((uint16_t)(y1 - y0 + 1)) * (uint16_t)(x1 - x0 + 1)); ++ij) { spill_send_16b_data(color); }
+  spill_close();
+}
+
+__attribute__((always_inline)) inline uint8_t
+sq_dist_test(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint16_t rsq) {
+  uint8_t dx = x1 - x0;
+  uint8_t dy = y1 - y0;
+  return ((uint16_t)((((uint16_t)dx) * (uint16_t)dx) + (((uint16_t)dy) * (uint16_t)dy))) < rsq;
+}
+
+// NOLINTNEXTLINE(misc-no-recursion)
+void circle_remainder_recursive(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint16_t rsq, uint16_t color) {
+  // recursively draw the biggest square you can
+  // find l s.t. (x1+l,y1+l) is exactly `radius` away from (x0,y0),
+  // and draw that square 8 times around the cicle
+  if (!sq_dist_test(x0, y0, x1, y1, rsq)) {
+    return;
+  }              // base case: already out of bounds
+  uint8_t l = 1; // binary search
+  while (sq_dist_test(x0, y0, x1 + l, y1 + l, rsq)) {
+    l <<= 1;
+  }
+  uint8_t dl;
+  l -= (dl = (l >> 1)); // walking back
+  while (dl >>= 1) {
+    l += dl;
+    if (!sq_dist_test(x0, y0, x1 + l, y1 + l, rsq)) {
+      l -= dl;
+    }
+  }
+  // necessary to do (x0 - (x1 - x0)) instead of ((x0 << 1) - x1) b/c overflow
+  uint8_t dx = x1 - x0;
+  uint8_t dy = y1 - y0;
+  --l;
+
+  lcd_block(x1, y1, x1 + l, y1 + l, color);
+  lcd_block(x1, y0 - dy - l, x1 + l, y0 - dy, color);
+  lcd_block(x0 - dx - l, y1, x0 - dx, y1 + l, color);
+  lcd_block(x0 - dx - l, y0 - dy - l, x0 - dx, y0 - dy, color);
+  lcd_block(x0 + dy, y0 + dx, x0 + dy + l, y0 + dx + l, color);
+  lcd_block(x0 + dy, y0 - dx - l, x0 + dy + l, y0 - dx, color);
+  lcd_block(x0 - dy - l, y0 + dx, x0 - dy, y0 + dx + l, color);
+  lcd_block(x0 - dy - l, y0 - dx - l, x0 - dy, y0 - dx, color);
+
+  ++l;
+  circle_remainder_recursive(x0, y0, x1, y1 + l, rsq, color);
+  circle_remainder_recursive(x0, y0, x1 + l, y1, rsq, color);
+}
+
+void lcd_circle(uint8_t x0, uint8_t y0, uint8_t radius, uint16_t color) {
+  assert(LCD_INITIALIZED);
+  assert(!SPILL_IS_OPEN);
+  // Draw the biggest rectangle you can, recursively, down to 1 pixel
+  // sqrt(1/2)*256=181 so x*sqrt(1/2) ~= (x*181)>>8 without float mul
+  uint8_t hsl /* half side-length */ = (uint16_t)(181 * (uint16_t)radius) >> 8;
+  uint8_t y1 = y0 + hsl;
+  lcd_block(x0 - hsl, y0 - hsl, x0 + hsl, y1, color);
+  uint16_t rsq = (uint16_t)(((uint16_t)radius) * (uint16_t)radius);
+  circle_remainder_recursive(x0, y0, x0, y1, rsq, color);
+}
+
+void lcd_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t c) {
+  assert(LCD_INITIALIZED);
+  assert(!SPILL_IS_OPEN);
+  int8_t flipx, flipy, incr, zncr;
+  int16_t dx, dy, i, z, e = 0;
+  int16_t const *i0, *i1, *px, *py, *di, *dz;
+  dx = (flipx = (x1 < x0)) ? x0 - x1 : (x1 - x0);
+  dy = (flipy = (y1 < y0)) ? y0 - y1 : (y1 - y0);
+  if (dy <= dx) {
+    incr = (flipx ? -1 : 1);
+    zncr = (flipy ? -1 : 1);
+    i0 = &x0;
+    i1 = &x1;
+    px = &i;
+    py = &z;
+    di = &dx;
+    dz = &dy;
+    z = y0;
+  } else {
+    incr = (flipy ? -1 : 1);
+    zncr = (flipx ? -1 : 1);
+    i0 = &y0;
+    i1 = &y1;
+    px = &z;
+    py = &i;
+    di = &dy;
+    dz = &dx;
+    z = x0;
+  }
+  for (i = *i0; i != *i1; i += incr) {
+    lcd_pixel(*px, *py, c);
+    if (((e += *dz) << 1) >= *di) {
+      e -= *di;
+      z += zncr;
+    }
+  }
+}
+
+// Vertical line.
+void lcd_look_to_the_cookie(uint8_t x0, uint8_t y0, uint8_t x1, uint16_t color1, uint16_t color2) {
+  assert(LCD_INITIALIZED);
+  assert(!SPILL_IS_OPEN);
+  spill_open();
+  LCD_TRUST_SET_ADDR(x0, y0, x1, y0 + 1);
+  for (uint16_t ij = 0; ij != (uint16_t)(x1 - x0 + 1); ++ij) { spill_send_16b_data(color1); }
+  for (uint16_t ij = 0; ij != (uint16_t)(x1 - x0 + 1); ++ij) { spill_send_16b_data(color2); }
+  spill_close();
+}
+
+void lcd_set_screen(uint16_t color) {
+  assert(LCD_INITIALIZED);
+  lcd_block(0, 0, 159, 127, color);
+}
+
+void lcd_string(uint8_t x, uint8_t y, char const* str, uint16_t fg, uint16_t bg) {
+  assert(LCD_INITIALIZED);
+  assert(!SPILL_IS_OPEN);
+  if (!str) { return; }
+  char c;
+  while ((c = (*(str++)))) {
+    // this doesn't have to be super performant as long as we only call it when necessary
+    lcd_char(x, y, c, fg, bg);
+    x += 6;
+  }
+}
 
 #endif // LCD_H
