@@ -3,12 +3,13 @@
 
 #include "big-ascii.h"
 #include "circlebuffer.h"
-#include "graphics.h"
 #include "lcd.h"
 
 #include <stdint.h>
 
-#define BACKGROUND RED // TODO: back to `WHITE`
+#define PIN_BUZZER FEATHER_A1
+
+#define BACKGROUND WHITE
 #define PULSELINE RED
 #define PULSEMEAN BLUE
 #define PULSEPEAK GREEN
@@ -18,14 +19,18 @@
 #define VTMAX 127
 #define PADDING 3
 
-void init_graphics(void) {
-  lcd_init();
+void graphics_init(void) {
+  st7735_init(); // leaves backlight off so we can initialize behind the scenes
+
+  GPIO_PULL(PIN_LIT, HI); // Let there be light!
 
   lcd_set_screen(BACKGROUND);
   big_heart(HZMAX - PADDING, PADDING, RED);
   big_B(HZMAX - PADDING, PADDING + 4 * (BIGASCII_W + 1), RED);
   big_P(HZMAX - PADDING, PADDING + 5 * (BIGASCII_W + 1), RED);
   big_M(HZMAX - PADDING, PADDING + 6 * (BIGASCII_W + 1), RED);
+
+  GPIO_PULL(PIN_LIT, HI); // Let there be light!
 }
 
 uint8_t is_heartbeat(uint16_t v) {
@@ -39,7 +44,7 @@ uint8_t is_heartbeat(uint16_t v) {
   // Inlined part of `lcd_block` for a dotted line:
   LCD_TRUST_SET_ADDR(MIDPOINT, 0, MIDPOINT, 127);
   for (uint16_t ij = 0; ij != 128; ++ij) {
-    spill_send_8b_data(((uint16_t)(!dotted)) - 1);
+    spi_send_8b((!dotted) - 1);
     if ((++dotted) == NDOTTED) { dotted = 0; }
   }
   if ((++dotted) == NDOTTED) { dotted = 0; }
@@ -76,7 +81,7 @@ uint8_t is_heartbeat(uint16_t v) {
     ++runmean;
   } else if ((v << 1) < runmean) {
     falling = 0;
-    GPIO_PULL_LO(PIN_BUZZER);
+    GPIO_PULL(PIN_BUZZER, LO);
     --runmean;
   }
   if ((hist[127] << 3) > runpeak) {
@@ -101,7 +106,7 @@ uint8_t is_heartbeat(uint16_t v) {
 
   if ((!falling) && ((hist[127] << 4) > runpeak)) { // NOTE <<4 NOT <<3: only testing for > half-peak
     falling = 1;
-    GPIO_PULL_HI(PIN_BUZZER);
+    GPIO_PULL(PIN_BUZZER, HI);
     return 1;
   }
   return 0;

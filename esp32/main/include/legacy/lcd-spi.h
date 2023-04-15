@@ -65,62 +65,64 @@ __attribute__((always_inline)) inline static void lcd_init(void) {
   // SPI command sequence from ESE350 ST7735 library (almost verbatim):
   spill_open();
   // Software reset. This first one is needed because of the RC reset.
-  SPILL_SAFE_COMMAND(ST7735_SWRESET, 0, 150);
+  SPILL_SAFE_COMMAND(CMD_SWRESET, 0, 150);
   // Exit sleep mode
-  SPILL_SAFE_COMMAND(ST7735_SLPOUT, 0, 255);
+  SPILL_SAFE_COMMAND(CMD_SLPOUT, 0, 255);
   // Frame rate control 1
-  SPILL_SAFE_COMMAND(ST7735_FRMCTR1, 3, 0, 0x01, 0x2C, 0x2D);
+  SPILL_SAFE_COMMAND(CMD_FRMCTR1, 3, 0, 0x01, 0x2C, 0x2D);
   // Frame rate control 2
-  SPILL_SAFE_COMMAND(ST7735_FRMCTR2, 3, 0, 0x01, 0x2C, 0x2D);
+  SPILL_SAFE_COMMAND(CMD_FRMCTR2, 3, 0, 0x01, 0x2C, 0x2D);
   // Frame rate control 3
-  SPILL_SAFE_COMMAND(ST7735_FRMCTR3, 6, 0, 0x01, 0x2C, 0x2D, 0x01, 0x2C, 0x2D);
+  SPILL_SAFE_COMMAND(CMD_FRMCTR3, 6, 0, 0x01, 0x2C, 0x2D, 0x01, 0x2C, 0x2D);
   // Display inversion
-  SPILL_SAFE_COMMAND(ST7735_INVCTR, 1, 0, 0x07);
+  SPILL_SAFE_COMMAND(CMD_INVCTR, 1, 0, 0x07);
   // Power control 1
-  SPILL_SAFE_COMMAND(ST7735_PWCTR1, 3, 5, 0x0A, 0x02, 0x84);
+  SPILL_SAFE_COMMAND(CMD_PWCTR1, 3, 5, 0x0A, 0x02, 0x84);
   // Power control 2
-  SPILL_SAFE_COMMAND(ST7735_PWCTR2, 1, 5, 0xC5);
+  SPILL_SAFE_COMMAND(CMD_PWCTR2, 1, 5, 0xC5);
   // Power control 3
-  SPILL_SAFE_COMMAND(ST7735_PWCTR3, 2, 5, 0x0A, 0x00);
+  SPILL_SAFE_COMMAND(CMD_PWCTR3, 2, 5, 0x0A, 0x00);
   // Power control 4
-  SPILL_SAFE_COMMAND(ST7735_PWCTR4, 2, 5, 0x8A, 0x2A);
+  SPILL_SAFE_COMMAND(CMD_PWCTR4, 2, 5, 0x8A, 0x2A);
   // Power control 5
-  SPILL_SAFE_COMMAND(ST7735_PWCTR5, 2, 5, 0x8A, 0xEE);
+  SPILL_SAFE_COMMAND(CMD_PWCTR5, 2, 5, 0x8A, 0xEE);
   // Vcom control 1
-  SPILL_SAFE_COMMAND(ST7735_VMCTR1, 1, 0, 0x0E);
+  SPILL_SAFE_COMMAND(CMD_VMCTR1, 1, 0, 0x0E);
   // Inversion off
-  SPILL_SAFE_COMMAND(ST7735_INVOFF, 0, 0);
+  SPILL_SAFE_COMMAND(CMD_INVOFF, 0, 0);
   // Memory Access control
-  SPILL_SAFE_COMMAND(ST7735_MADCTL, 1, 0, 0xC8);
+  SPILL_SAFE_COMMAND(CMD_MADCTL, 1, 0, 0xC8);
   // Interface pixel format
-  SPILL_SAFE_COMMAND(ST7735_COLMOD, 1, 0, 0x05);
+  SPILL_SAFE_COMMAND(CMD_COLMOD, 1, 0, 0x05);
   // Column
-  SPILL_SAFE_COMMAND(ST7735_CASET, 4, 0, 0x00, 0x00, 0x00, 0x7F);
+  SPILL_SAFE_COMMAND(CMD_CASET, 4, 0, 0x00, 0x00, 0x00, 0x7F);
   // Page
-  SPILL_SAFE_COMMAND(ST7735_RASET, 4, 0, 0x00, 0x00, 0x00, 0x9F);
+  SPILL_SAFE_COMMAND(CMD_RASET, 4, 0, 0x00, 0x00, 0x00, 0x9F);
   // Positive Gamma
-  SPILL_SAFE_COMMAND(ST7735_GMCTRP1, 16, 0, 0x02, 0x1C, 0x07, 0x12, 0x37, 0x32, 0x29, 0x2D, 0x29, 0x25, 0x2B, 0x39, 0x00, 0x01, 0x03, 0x10);
+  SPILL_SAFE_COMMAND(CMD_GMCTRP1, 16, 0, 0x02, 0x1C, 0x07, 0x12, 0x37, 0x32, 0x29, 0x2D, 0x29, 0x25, 0x2B, 0x39, 0x00, 0x01, 0x03, 0x10);
   // Negative Gamma
-  SPILL_SAFE_COMMAND(ST7735_GMCTRN1, 16, 0, 0x03, 0x1D, 0x07, 0x06, 0x2E, 0x2C, 0x29, 0x2D, 0x2E, 0x2E, 0x37, 0x3F, 0x00, 0x00, 0x02, 0x10);
+  SPILL_SAFE_COMMAND(CMD_GMCTRN1, 16, 0, 0x03, 0x1D, 0x07, 0x06, 0x2E, 0x2C, 0x29, 0x2D, 0x2E, 0x2E, 0x37, 0x3F, 0x00, 0x00, 0x02, 0x10);
   // Normal display on
-  SPILL_SAFE_COMMAND(ST7735_NORON, 0, 10);
+  SPILL_SAFE_COMMAND(CMD_NORON, 0, 10);
   // Set display on
-  SPILL_SAFE_COMMAND(ST7735_DISPON, 0, 100);
+  SPILL_SAFE_COMMAND(CMD_DISPON, 0, 100);
   // Default to rotation 3
-  SPILL_SAFE_COMMAND(ST7735_MADCTL, 1, 10, MADCTL_MX | MADCTL_MV | MADCTL_RGB);
+  SPILL_SAFE_COMMAND(CMD_MADCTL, 1, 10, MADCTL_MX | MADCTL_MV | MADCTL_RGB);
   spill_close();
+
+  // TODO: fill background HERE
 
   // Turn on the display
   GPIO_PULL_HI(LCD_BACKLIGHT);
 }
 
-#define LCD_TRUST_SET_ADDR(X0, Y0, X1, Y1)                \
-  do {                                                    \
-    assert(LCD_INITIALIZED);                              \
-    assert(SPILL_IS_OPEN);                                \
-    SPILL_SAFE_COMMAND(ST7735_CASET, 4, 0, 0, X0, 0, X1); \
-    SPILL_SAFE_COMMAND(ST7735_RASET, 4, 0, 0, Y0, 0, Y1); \
-    SPILL_SAFE_COMMAND(ST7735_RAMWR, 0, 5);               \
+#define LCD_TRUST_SET_ADDR(X0, Y0, X1, Y1)             \
+  do {                                                 \
+    assert(LCD_INITIALIZED);                           \
+    assert(SPILL_IS_OPEN);                             \
+    SPILL_SAFE_COMMAND(CMD_CASET, 4, 0, 0, X0, 0, X1); \
+    SPILL_SAFE_COMMAND(CMD_RASET, 4, 0, 0, Y0, 0, Y1); \
+    SPILL_SAFE_COMMAND(CMD_RAMWR, 0, 5);               \
   } while (0)
 
 #endif // LCD_SPI_H

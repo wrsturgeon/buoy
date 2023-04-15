@@ -14,18 +14,18 @@
 //%%%%%%%%%%%%%%%%
 // Timing specs on the ST7735 datasheet, p. 25:
 // https://cdn-shop.adafruit.com/datasheets/ST7735R_V0.2.pdf
-#define PLAY_IT_SAFE // TODO: turn this off and see what happens
+// #define PLAY_IT_SAFE // TODO: turn this off and see what happens
 #ifdef PLAY_IT_SAFE
-#define DELAY_JUST_TO_BE_SAFE() ets_delay_us(1)
+#define POSTCMD_DELAY(...) ets_delay_us(__VA_ARGS__)
 #else
-#define DELAY_JUST_TO_BE_SAFE() (void)0
+#define POSTCMD_DELAY(...) (void)0
 #endif
 
 static uint8_t SPI_READY = 0;
 static uint8_t SPI_IS_OPEN = 0;
 
 __attribute__((always_inline)) inline static void spi_init(void) {
-  assert(!BITBAND_SPI_READY);
+  assert(!SPI_READY);
 
   GPIO_ENABLE_OUTPUT(PIN_TCS);
   GPIO_ENABLE_OUTPUT(PIN_MSI);
@@ -37,20 +37,19 @@ __attribute__((always_inline)) inline static void spi_init(void) {
   GPIO_PULL(PIN_SCK, LO);
   GPIO_PULL(PIN_MSO, LO);
 
-  BITBAND_SPI_READY = 1;
+  SPI_READY = 1;
 }
 
 __attribute__((always_inline)) inline static void spi_open(void) {
-  assert(BITBAND_SPI_READY);
+  assert(SPI_READY);
   assert(!SPI_IS_OPEN);
   assert(!GPIO_GET(PIN_SCK));
   GPIO_PULL(PIN_TCS, LO);
-  DELAY_JUST_TO_BE_SAFE();
   SPI_IS_OPEN = 1;
 }
 
 __attribute__((always_inline)) inline static void spi_close(void) {
-  assert(BITBAND_SPI_READY);
+  assert(SPI_READY);
   assert(SPI_IS_OPEN);
   GPIO_PULL(PIN_TCS, HI);
   SPI_IS_OPEN = 0;
@@ -60,12 +59,10 @@ __attribute__((always_inline)) inline static void spi_send_bit(uint8_t bit) {
   assert(!GPIO_GET(PIN_SCK));
   bit ? GPIO_PULL(PIN_MSI, HI) : GPIO_PULL(PIN_MSI, LO);
   GPIO_PULL(PIN_SCK, HI);
-  DELAY_JUST_TO_BE_SAFE();
   // Placing these `assert`s here should help even out the duty cycle
   assert(SPI_IS_OPEN);
   assert(!GPIO_GET(PIN_TCS));
   GPIO_PULL(PIN_SCK, LO);
-  DELAY_JUST_TO_BE_SAFE();
 }
 
 __attribute__((always_inline)) inline static void spi_send_8b(uint8_t msg) {
@@ -129,6 +126,6 @@ __attribute__((always_inline)) inline static void spi_send_16b(uint16_t msg) {
   spi_send_8b(CMD);                               \
   GPIO_PULL(PIN_TDC, HI);                         \
   SPI_MOSI_##ARGC(__VA_ARGS__);                   \
-  ets_delay_us(WAIT * 1000U)
+  POSTCMD_DELAY(WAIT * 1000U)
 
 #endif // BITBANG_SPI_H

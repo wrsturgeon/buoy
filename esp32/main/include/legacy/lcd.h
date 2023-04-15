@@ -2,41 +2,31 @@
 #define LCD_H
 
 #include "ascii.h"
-#include "bitbang/st7735.h"
+#include "lcd-spi.h"
 
 #include <stdint.h>
 
 // Converts 24b RGB to 16b 5-6-5 RGB (respectively) with some bit trickery
+#define RGB565(R, G, B) (((uint16_t)(((uint16_t)(((uint8_t)(R)) & 0b11111000U)) << 8U)) | ((uint16_t)(((uint16_t)(((uint8_t)(G)) & 0b11111100U)) << 5U)) | (((uint8_t)(B)) >> 3U))
 // #define RGB565(R,G,B) ((((31*((R)+4))/255)<<11) | (((63*((G)+2))/255)<<5) | ((31*((B)+4))/255))
-#define RGB565(R, G, B) ((((R) >> 3U) << 11U) | (((G) >> 2U) << 5U) | ((B) >> 3U))
-
 #define RED RGB565(255, 0, 0)
 #define GREEN RGB565(0, 255, 0)
 #define BLUE RGB565(0, 0, 255)
 #define WHITE RGB565(255, 255, 255)
 #define BLACK RGB565(0, 0, 0)
 
-#define LCD_TRUST_SET_ADDR(X0, Y0, X1, Y1)      \
-  do {                                          \
-    assert(ST7735_READY);                       \
-    assert(SPI_IS_OPEN);                        \
-    SPI_COMMAND(CMD_CASET, 4, 0, 0, X0, 0, X1); \
-    SPI_COMMAND(CMD_RASET, 4, 0, 0, Y0, 0, Y1); \
-    SPI_COMMAND(CMD_RAMWR, 0, 5);               \
-  } while (0)
-
 void lcd_pixel(uint8_t x, uint8_t y, uint16_t color) {
-  assert(ST7735_READY);
-  assert(!SPI_IS_OPEN);
-  spi_open();
+  assert(LCD_INITIALIZED);
+  assert(!SPILL_IS_OPEN);
+  spill_open();
   LCD_TRUST_SET_ADDR(x, y, x, y);
-  spi_send_16b(color);
-  spi_close();
+  spill_send_16b_data(color);
+  spill_close();
 }
 
 void lcd_char(uint8_t x, uint8_t y, uint16_t character, uint16_t fColor, uint16_t bColor) {
-  assert(ST7735_READY);
-  assert(!SPI_IS_OPEN);
+  assert(LCD_INITIALIZED);
+  assert(!SPILL_IS_OPEN);
   uint16_t row = character - 0x20; // Determine row of ASCII table starting at space
   unsigned i, j;
   for (i = 0; i < 5; i++) {
@@ -52,12 +42,12 @@ void lcd_char(uint8_t x, uint8_t y, uint16_t character, uint16_t fColor, uint16_
 }
 
 void lcd_block(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint16_t color) {
-  assert(ST7735_READY);
-  assert(!SPI_IS_OPEN);
-  spi_open();
+  assert(LCD_INITIALIZED);
+  assert(!SPILL_IS_OPEN);
+  spill_open();
   LCD_TRUST_SET_ADDR(x0, y0, x1, y1);
-  for (uint16_t ij = 0; ij != (uint16_t)(((uint16_t)(y1 - y0 + 1)) * (uint16_t)(x1 - x0 + 1)); ++ij) { spi_send_16b(color); }
-  spi_close();
+  for (uint16_t ij = 0; ij != (uint16_t)(((uint16_t)(y1 - y0 + 1)) * (uint16_t)(x1 - x0 + 1)); ++ij) { spill_send_16b_data(color); }
+  spill_close();
 }
 
 __attribute__((always_inline)) inline uint8_t
@@ -107,8 +97,8 @@ void circle_remainder_recursive(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, 
 }
 
 void lcd_circle(uint8_t x0, uint8_t y0, uint8_t radius, uint16_t color) {
-  assert(ST7735_READY);
-  assert(!SPI_IS_OPEN);
+  assert(LCD_INITIALIZED);
+  assert(!SPILL_IS_OPEN);
   // Draw the biggest rectangle you can, recursively, down to 1 pixel
   // sqrt(1/2)*256=181 so x*sqrt(1/2) ~= (x*181)>>8 without float mul
   uint8_t hsl /* half side-length */ = (uint16_t)(181 * (uint16_t)radius) >> 8;
@@ -119,8 +109,8 @@ void lcd_circle(uint8_t x0, uint8_t y0, uint8_t radius, uint16_t color) {
 }
 
 void lcd_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t c) {
-  assert(ST7735_READY);
-  assert(!SPI_IS_OPEN);
+  assert(LCD_INITIALIZED);
+  assert(!SPILL_IS_OPEN);
   int8_t flipx, flipy, incr, zncr;
   int16_t dx, dy, i, z, e = 0;
   int16_t const *i0, *i1, *px, *py, *di, *dz;
@@ -158,23 +148,23 @@ void lcd_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t c) {
 
 // Vertical line.
 void lcd_look_to_the_cookie(uint8_t x0, uint8_t y0, uint8_t x1, uint16_t color1, uint16_t color2) {
-  assert(ST7735_READY);
-  assert(!SPI_IS_OPEN);
-  spi_open();
+  assert(LCD_INITIALIZED);
+  assert(!SPILL_IS_OPEN);
+  spill_open();
   LCD_TRUST_SET_ADDR(x0, y0, x1, y0 + 1);
-  for (uint16_t ij = 0; ij != (uint16_t)(x1 - x0 + 1); ++ij) { spi_send_16b(color1); }
-  for (uint16_t ij = 0; ij != (uint16_t)(x1 - x0 + 1); ++ij) { spi_send_16b(color2); }
-  spi_close();
+  for (uint16_t ij = 0; ij != (uint16_t)(x1 - x0 + 1); ++ij) { spill_send_16b_data(color1); }
+  for (uint16_t ij = 0; ij != (uint16_t)(x1 - x0 + 1); ++ij) { spill_send_16b_data(color2); }
+  spill_close();
 }
 
 void lcd_set_screen(uint16_t color) {
-  assert(ST7735_READY);
+  assert(LCD_INITIALIZED);
   lcd_block(0, 0, 159, 127, color);
 }
 
 void lcd_string(uint8_t x, uint8_t y, char const* str, uint16_t fg, uint16_t bg) {
-  assert(ST7735_READY);
-  assert(!SPI_IS_OPEN);
+  assert(LCD_INITIALIZED);
+  assert(!SPILL_IS_OPEN);
   if (!str) { return; }
   char c;
   while ((c = (*(str++)))) {
