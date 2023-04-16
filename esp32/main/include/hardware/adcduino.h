@@ -2,6 +2,7 @@
 #define ADCDUINO_H
 
 #include </Users/willsturgeon/esp/esp-idf/components/driver/deprecated/driver/adc.h>
+#include <hal/adc_ll.h>
 #include <hal/gpio_hal.h>
 #include <soc/adc_channel.h>
 #include <soc/rtc_io_reg.h>
@@ -11,6 +12,7 @@
 
 #define ADC_ATTENUATION 3
 #define ADC_CLK_DIV 1
+#define ADC_BIT_WIDTH 12
 
 // GPIO FUNCTIONS
 #define INPUT 0x01
@@ -33,8 +35,8 @@ typedef enum {
   ADC_ATTENDB_MAX
 } adc_attenuation_t;
 
-__attribute__((always_inline)) inline static void dropin_adc1_config_width(uint8_t b) {
-  ESP_ERROR_CHECK(adc1_config_width(b));
+__attribute__((always_inline)) inline static void dropin_adc1_config_width(void) {
+  adc_oneshot_ll_set_output_bits(ADC_UNIT_1, ADC_BIT_WIDTH);
 }
 
 __attribute__((always_inline)) inline static void dropin_adc_set_clk_div(uint8_t d) {
@@ -61,7 +63,7 @@ __attribute__((always_inline)) inline static uint16_t dropin_adc1_get_raw(void) 
 }
 
 uint16_t FUCK(void) {
-  dropin_adc1_config_width(12);
+  dropin_adc1_config_width();
   dropin_adc_set_clk_div(ADC_CLK_DIV);
   dropin_gpio_config();
   dropin_adc1_config_channel_atten();
