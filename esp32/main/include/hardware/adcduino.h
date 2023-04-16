@@ -33,12 +33,12 @@ typedef enum {
   ADC_ATTENDB_MAX
 } adc_attenuation_t;
 
-extern gpio_dev_t GPIO;
-static gpio_config_t GPIO_CONF = {
+static gpio_config_t const GPIO_CONF = {
     .pin_bit_mask = (1ULL << 36),          /*!< GPIO pin: set with bit mask, each bit maps to a GPIO */
     .mode = GPIO_MODE_DISABLE,             /*!< GPIO mode: set input/output mode                     */
     .pull_up_en = GPIO_PULLUP_DISABLE,     /*!< GPIO pull-up                                         */
     .pull_down_en = GPIO_PULLDOWN_DISABLE, /*!< GPIO pull-down                                       */
+    .intr_type = GPIO_INTR_DISABLE,
 };
 
 uint16_t FUCK(void) {
@@ -46,29 +46,11 @@ uint16_t FUCK(void) {
   ESP_ERROR_CHECK(adc_set_clk_div(ADC_CLK_DIV));
 
   //    <<< pinMode(36, ANALOG);
-  GPIO_CONF.intr_type = GPIO.pin[36].int_type;
   ESP_ERROR_CHECK(gpio_config(&GPIO_CONF));
 
-#if (ADC1_GPIO36_CHANNEL > (SOC_ADC_MAX_CHANNEL_NUM - 1))
-  adc2_config_channel_atten(ADC1_GPIO36_CHANNEL - SOC_ADC_MAX_CHANNEL_NUM, ADC_ATTENUATION);
-#else
   adc1_config_channel_atten(ADC1_GPIO36_CHANNEL, ADC_ATTENUATION);
-#endif
 
-  int value;
-#if (ADC1_GPIO36_CHANNEL > (SOC_ADC_MAX_CHANNEL_NUM - 1))
-  esp_err_t r;
-  switch (r = adc2_get_raw(ADC1_GPIO36_CHANNEL - SOC_ADC_MAX_CHANNEL_NUM, 12, &value)) {
-  case ESP_OK: break;
-  case ESP_ERR_INVALID_STATE: log_e("GPIO%u: %s: ADC2 not initialized yet.", 36, esp_err_to_name(r)); return -1;
-  case ESP_ERR_TIMEOUT: log_e("GPIO%u: %s: ADC2 is in use by Wi-Fi. Please see https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/adc.html#adc-limitations for more info", 36, esp_err_to_name(r)); return -1;
-  default: log_e("GPIO%u: %s", 36, esp_err_to_name(r)); return -1;
-  }
-#else
-  value = adc1_get_raw(ADC1_GPIO36_CHANNEL);
-#endif
-  //  <<< return mapResolution(value);
-  return value;
+  return adc1_get_raw(ADC1_GPIO36_CHANNEL);
 }
 
 #endif // ADCDUINO_H
