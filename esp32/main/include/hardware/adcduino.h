@@ -62,7 +62,20 @@ __attribute__((always_inline)) inline static void dropin_rtc_gpio_deinit(void) {
   REG(rtc_io_desc[RTC_IO_CHANNEL].reg) &= ~rtc_io_desc[RTC_IO_CHANNEL].mux;
 }
 
-__attribute__((always_inline)) inline static void dropin_gpio_set_intr_type(void) { gpio_set_intr_type(ADC_PIN, GPIO_INTR_DISABLE); }
+__attribute__((always_inline)) inline static void dropin_gpio_set_intr_type(void) {
+  // gpio_set_intr_type(ADC_PIN, GPIO_INTR_DISABLE);
+
+  // #define gpio_hal_set_intr_type(hal, gpio_num, intr_type) gpio_ll_set_intr_type((hal)->dev, gpio_num, intr_type)
+  //   gpio_hal_set_intr_type(gpio_context.gpio_hal, ADC_PIN, GPIO_INTR_DISABLE);
+  // gpio_ll_set_intr_type(gpio_context.gpio_hal->dev, ADC_PIN, GPIO_INTR_DISABLE);
+  // gpio_context.gpio_hal->dev->pin[ADC_PIN].int_type = GPIO_INTR_DISABLE;
+  REG(PASTE(PASTE(GPIO_PIN, ADC_PIN), _REG)) &= ~PASTE(PASTE(GPIO_PIN, ADC_PIN), _INT_TYPE_M);
+
+  //   gpio_context.isr_clr_on_entry_mask &= ~(1ULL << ADC_PIN);
+  //   gpio_hal_clear_intr_status_bit(gpio_context.gpio_hal, gpio_num);
+  // #define gpio_hal_clear_intr_status_bit(hal, gpio_num) (((gpio_num) < 32) ? gpio_ll_clear_intr_status((hal)->dev, 1 << gpio_num) : gpio_ll_clear_intr_status_high((hal)->dev, 1 << (gpio_num - 32)))
+  //   HAL_FORCE_MODIFY_U32_REG_FIELD(hw->status1_w1tc, intr_st, mask);
+}
 
 __attribute__((always_inline)) inline static void dropin_gpio_intr_disable(void) { gpio_intr_disable(ADC_PIN); }
 
