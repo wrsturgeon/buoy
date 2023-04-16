@@ -33,40 +33,21 @@ typedef enum {
   ADC_ATTENDB_MAX
 } adc_attenuation_t;
 
+extern gpio_dev_t GPIO;
+static gpio_config_t GPIO_CONF = {
+    .pin_bit_mask = (1ULL << 36),          /*!< GPIO pin: set with bit mask, each bit maps to a GPIO */
+    .mode = GPIO_MODE_DISABLE,             /*!< GPIO mode: set input/output mode                     */
+    .pull_up_en = GPIO_PULLUP_DISABLE,     /*!< GPIO pull-up                                         */
+    .pull_down_en = GPIO_PULLDOWN_DISABLE, /*!< GPIO pull-down                                       */
+};
+
 uint16_t FUCK(void) {
-
-  //  <<< analogReadResolution(12);
   ESP_ERROR_CHECK(adc1_config_width(12));
-
-  //  <<< analogRead(36);
-  //    <<< __adcAttachPin(36);
-  //      <<< __analogInit();
-  //        <<< __analogSetClockDiv(1);
-  adc_set_clk_div(ADC_CLK_DIV);
+  ESP_ERROR_CHECK(adc_set_clk_div(ADC_CLK_DIV));
 
   //    <<< pinMode(36, ANALOG);
-  gpio_hal_context_t gpiohal;
-  gpiohal.dev = GPIO_LL_GET_HW(GPIO_PORT_0);
-  gpio_config_t conf = {
-      .pin_bit_mask = (1ULL << 36),              /*!< GPIO pin: set with bit mask, each bit maps to a GPIO */
-      .mode = GPIO_MODE_DISABLE,                 /*!< GPIO mode: set input/output mode                     */
-      .pull_up_en = GPIO_PULLUP_DISABLE,         /*!< GPIO pull-up                                         */
-      .pull_down_en = GPIO_PULLDOWN_DISABLE,     /*!< GPIO pull-down                                       */
-      .intr_type = gpiohal.dev->pin[36].int_type /*!< GPIO interrupt type - previously set                 */
-  };
-#if (ANALOG < 0x20) // io
-  conf.mode = ANALOG & (INPUT | OUTPUT);
-#if (ANALOG & OPEN_DRAIN)
-  conf.mode |= GPIO_MODE_DEF_OD;
-#endif
-#if (ANALOG & PULLUP)
-  conf.pull_up_en = GPIO_PULLUP_ENABLE;
-#endif
-#if (ANALOG & PULLDOWN)
-  conf.pull_down_en = GPIO_PULLDOWN_ENABLE;
-#endif
-#endif // ANALOG < 0x20
-  ESP_ERROR_CHECK(gpio_config(&conf));
+  GPIO_CONF.intr_type = GPIO.pin[36].int_type;
+  ESP_ERROR_CHECK(gpio_config(&GPIO_CONF));
 
 #if (ADC1_GPIO36_CHANNEL > (SOC_ADC_MAX_CHANNEL_NUM - 1))
   adc2_config_channel_atten(ADC1_GPIO36_CHANNEL - SOC_ADC_MAX_CHANNEL_NUM, ADC_ATTENUATION);
