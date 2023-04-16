@@ -12,12 +12,12 @@
 #define BIGASCII_H 9
 
 // don't inline all these
-#define IMPLFN(FNNAME) void big_##FNNAME(uint8_t x, uint8_t y, uint16_t color)
+#define IMPLFN(FNNAME) static void big_##FNNAME(uint8_t x, uint8_t y, uint16_t color)
 
 IMPLFN(heart) {
   // Symmetric
   // y: +0 / +6
-  for (uint8_t i = 1; i != 6; ++i) {
+  for (uint8_t i = 1; i != 5; ++i) {
     lcd_pixel(x - i, y, color);
     lcd_pixel(x - i, y + 6, color);
   }

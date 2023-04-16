@@ -1,10 +1,13 @@
 // #define NDEBUG
 
+#include "bitbang/timing.h"
 #include "graphics.h"
 
 #include <esp_chip_info.h>
 #include <esp_flash.h>
 #include <esp_system.h>
+// #include <freertos/FreeRTOS.h>
+// #include <freertos/task.h>
 #include <rom/ets_sys.h>
 #include <sdkconfig.h>
 
@@ -51,7 +54,17 @@ void app_main(void) {
 
   graphics_init();
 
-  ets_delay_us(1000000); // 1s
+  timing_init();
+  uint64_t next_timer = 0;
+  do {
+    printf("t=%llu\r\n", timing_get_clock());
+    if (timing_get_clock() < next_timer) { printf("Waiting...\r\n"); }
+    do {
+    } while (timing_get_clock() < next_timer);
+    ++next_timer;
+  } while (1);
+
+  ets_delay_us(10000000); // 10s
 
   esp_restart();
 }

@@ -72,7 +72,9 @@
 #define PIN_TDC FEATHER_33
 #define PIN_LIT FEATHER_A0
 
+#ifndef NDEBUG
 static uint8_t ST7735_READY = 0;
+#endif // NDEBUG
 
 __attribute__((always_inline)) inline static void st7735_init(void) {
   assert(!SPI_READY);
@@ -91,7 +93,7 @@ __attribute__((always_inline)) inline static void st7735_init(void) {
   GPIO_PULL(PIN_TDC, HI);
   GPIO_PULL(PIN_LIT, LO); // Dim the lights for stage crew
   GPIO_PULL(PIN_RST, LO); // Reset (active low)
-  ets_delay_us(1000000);  // 1s
+  ets_delay_us(100000);   // 0.1s
   GPIO_PULL(PIN_RST, HI);
 
   // SPI command sequence from ESE350 ST7735 library (almost verbatim):
@@ -120,7 +122,9 @@ __attribute__((always_inline)) inline static void st7735_init(void) {
   SPI_COMMAND(CMD_MADCTL, 1, 10, MADCTL_MX | MADCTL_MV | MADCTL_RGB);                                                              // Default to rotation 3
   spi_close();
 
+#ifndef NDEBUG
   ST7735_READY = 1;
+#endif // NDEBUG
 }
 
 #endif // ST7735_H

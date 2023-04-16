@@ -14,7 +14,7 @@
 
 static spi_device_handle_t FUCK_IT_GLOBAL_SPI_HANDLE;
 
-#define NO_DMA 0 // for clarity of intention below
+#define NO_DMA 0 // for clarity of intention
 
 void spi_pre_transfer_callback(spi_transaction_t* t) {
   if (t->user) {

@@ -7,6 +7,8 @@
 
 #include <stdint.h>
 
+#define VISIBLE_SETUP 0 // 0: no; 1: yes
+
 #define PIN_BUZZER FEATHER_A1
 
 #define BACKGROUND WHITE
@@ -19,10 +21,18 @@
 #define VTMAX 127
 #define PADDING 3
 
-void graphics_init(void) {
+#ifndef NDEBUG
+static uint8_t GRAPHICS_READY = 0;
+#endif // NDEBUG
+
+__attribute__((always_inline)) inline static void graphics_init(void) {
+  assert(!GRAPHICS_READY);
+
   st7735_init(); // leaves backlight off so we can initialize behind the scenes
 
-  GPIO_PULL(PIN_LIT, HI); // Let there be light!
+#if VISIBLE_SETUP
+  GPIO_PULL(PIN_LIT, HI);
+#endif // VISIBLE_SETUP
 
   lcd_set_screen(BACKGROUND);
   big_heart(HZMAX - PADDING, PADDING, RED);
@@ -31,9 +41,13 @@ void graphics_init(void) {
   big_M(HZMAX - PADDING, PADDING + 6 * (BIGASCII_W + 1), RED);
 
   GPIO_PULL(PIN_LIT, HI); // Let there be light!
+
+#ifndef NDEBUG
+  GRAPHICS_READY = 1;
+#endif // NDEBUG
 }
 
-uint8_t is_heartbeat(uint16_t v) {
+static uint8_t poll_heartbeat(uint16_t v) {
   static int8_t hist[128];
   static uint16_t runmean = 1024;
   static int16_t runpeak = 0;
@@ -112,7 +126,7 @@ uint8_t is_heartbeat(uint16_t v) {
   return 0;
 }
 
-void update_bpm(uint16_t /* just in a hell of a case */ bpm) {
+static void update_bpm(uint16_t /* just in a hell of a case */ bpm) {
   lcd_block(HZMAX - PADDING - BIGASCII_H + 1, PADDING + BIGASCII_W, HZMAX - PADDING, PADDING + 4 * (BIGASCII_W + 1) - 1, BACKGROUND);
   if (bpm < 1000) {
     if (bpm < 100) {

@@ -5,14 +5,13 @@
 // a FUCKING PAIN IN THE ASS to write!
 // No third-party libraries here :_)
 
+#include "bitbang/reg.h"
 #include "gpio.h"
 
 #include <soc/spi_reg.h>
 
 #include <assert.h>
 #include <stdio.h>
-
-#define REG(...) (*(volatile uint32_t* const restrict)(__VA_ARGS__))
 
 #define SPIN 2 // HSPI
 #define SPI_MODE 0

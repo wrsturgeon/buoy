@@ -12,7 +12,9 @@
 
 #include <rom/ets_sys.h>
 
+#ifndef NDEBUG
 static uint8_t LCD_INITIALIZED = 0;
+#endif // NDEBUG
 
 #define LCD_TRUST_SEND_COMMAND(COMMAND, NBYTE, DELAY, ...)                                                         \
   do {                                                                                                             \
@@ -31,11 +33,11 @@ static uint8_t LCD_INITIALIZED = 0;
   } while (0)
 
 __attribute__((always_inline)) inline static void lcd_init(void) {
-#ifndef NDEBUG
   assert(!LCD_INITIALIZED);
   assert(!SPILL_IS_SET_UP); // done below
+#ifndef NDEBUG
   LCD_INITIALIZED = 1;
-#endif
+#endif // NDEBUG
 
   spill_setup();
 

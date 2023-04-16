@@ -16,13 +16,16 @@
 // https://cdn-shop.adafruit.com/datasheets/ST7735R_V0.2.pdf
 // #define PLAY_IT_SAFE // TODO: turn this off and see what happens
 #ifdef PLAY_IT_SAFE
-#define POSTCMD_DELAY(...) ets_delay_us(__VA_ARGS__)
+#define POSTCMD_DELAY(...) ets_delay_us(__VA_ARGS__);
 #else
-#define POSTCMD_DELAY(...) (void)0
+#define POSTCMD_DELAY(...) \
+  if ((__VA_ARGS__) >= 10) { ets_delay_us(__VA_ARGS__); } // Branch should be compile-time, but I'm not sure
 #endif
 
+#ifndef NDEBUG
 static uint8_t SPI_READY = 0;
 static uint8_t SPI_IS_OPEN = 0;
+#endif // NDEBUG
 
 __attribute__((always_inline)) inline static void spi_init(void) {
   assert(!SPI_READY);
@@ -37,7 +40,9 @@ __attribute__((always_inline)) inline static void spi_init(void) {
   GPIO_PULL(PIN_SCK, LO);
   GPIO_PULL(PIN_MSO, LO);
 
+#ifndef NDEBUG
   SPI_READY = 1;
+#endif // NDEBUG
 }
 
 __attribute__((always_inline)) inline static void spi_open(void) {
@@ -45,14 +50,18 @@ __attribute__((always_inline)) inline static void spi_open(void) {
   assert(!SPI_IS_OPEN);
   assert(!GPIO_GET(PIN_SCK));
   GPIO_PULL(PIN_TCS, LO);
+#ifndef NDEBUG
   SPI_IS_OPEN = 1;
+#endif // NDEBUG
 }
 
 __attribute__((always_inline)) inline static void spi_close(void) {
   assert(SPI_READY);
   assert(SPI_IS_OPEN);
   GPIO_PULL(PIN_TCS, HI);
+#ifndef NDEBUG
   SPI_IS_OPEN = 0;
+#endif // NDEBUG
 }
 
 __attribute__((always_inline)) inline static void spi_send_bit(uint8_t bit) {
@@ -118,14 +127,16 @@ __attribute__((always_inline)) inline static void spi_send_16b(uint16_t msg) {
 // clang-format on
 
 #define SPI_COMMAND(CMD, ARGC, WAIT, ...) SPI_COMMAND_LITERAL(CMD, ARGC, WAIT, __VA_ARGS__)
-#define SPI_COMMAND_LITERAL(CMD, ARGC, WAIT, ...) \
-  assert(SPI_IS_OPEN);                            \
-  assert(!GPIO_GET(PIN_TCS));                     \
-  assert(GPIO_GET(PIN_TDC));                      \
-  GPIO_PULL(PIN_TDC, LO); /* p. 27, first row */  \
-  spi_send_8b(CMD);                               \
-  GPIO_PULL(PIN_TDC, HI);                         \
-  SPI_MOSI_##ARGC(__VA_ARGS__);                   \
-  POSTCMD_DELAY(WAIT * 1000U)
+#define SPI_COMMAND_LITERAL(CMD, ARGC, WAIT, ...)  \
+  do {                                             \
+    assert(SPI_IS_OPEN);                           \
+    assert(!GPIO_GET(PIN_TCS));                    \
+    assert(GPIO_GET(PIN_TDC));                     \
+    GPIO_PULL(PIN_TDC, LO); /* p. 27, first row */ \
+    spi_send_8b(CMD);                              \
+    GPIO_PULL(PIN_TDC, HI);                        \
+    SPI_MOSI_##ARGC(__VA_ARGS__);                  \
+    POSTCMD_DELAY(WAIT * 1000U)                    \
+  } while (0)
 
 #endif // BITBANG_SPI_H

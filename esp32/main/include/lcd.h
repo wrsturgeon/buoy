@@ -25,7 +25,7 @@
     SPI_COMMAND(CMD_RAMWR, 0, 5);               \
   } while (0)
 
-void lcd_pixel(uint8_t x, uint8_t y, uint16_t color) {
+static void lcd_pixel(uint8_t x, uint8_t y, uint16_t color) {
   assert(ST7735_READY);
   assert(!SPI_IS_OPEN);
   spi_open();
@@ -34,7 +34,7 @@ void lcd_pixel(uint8_t x, uint8_t y, uint16_t color) {
   spi_close();
 }
 
-void lcd_char(uint8_t x, uint8_t y, uint16_t character, uint16_t fColor, uint16_t bColor) {
+static void lcd_char(uint8_t x, uint8_t y, uint16_t character, uint16_t fColor, uint16_t bColor) {
   assert(ST7735_READY);
   assert(!SPI_IS_OPEN);
   uint16_t row = character - 0x20; // Determine row of ASCII table starting at space
@@ -51,7 +51,7 @@ void lcd_char(uint8_t x, uint8_t y, uint16_t character, uint16_t fColor, uint16_
   }
 }
 
-void lcd_block(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint16_t color) {
+static void lcd_block(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint16_t color) {
   assert(ST7735_READY);
   assert(!SPI_IS_OPEN);
   spi_open();
@@ -60,15 +60,14 @@ void lcd_block(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint16_t color) {
   spi_close();
 }
 
-__attribute__((always_inline)) inline uint8_t
-sq_dist_test(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint16_t rsq) {
+__attribute__((always_inline)) inline static uint8_t sq_dist_test(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint16_t rsq) {
   uint8_t dx = x1 - x0;
   uint8_t dy = y1 - y0;
   return ((uint16_t)((((uint16_t)dx) * (uint16_t)dx) + (((uint16_t)dy) * (uint16_t)dy))) < rsq;
 }
 
 // NOLINTNEXTLINE(misc-no-recursion)
-void circle_remainder_recursive(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint16_t rsq, uint16_t color) {
+static void circle_remainder_recursive(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint16_t rsq, uint16_t color) {
   // recursively draw the biggest square you can
   // find l s.t. (x1+l,y1+l) is exactly `radius` away from (x0,y0),
   // and draw that square 8 times around the cicle
@@ -106,7 +105,7 @@ void circle_remainder_recursive(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, 
   circle_remainder_recursive(x0, y0, x1 + l, y1, rsq, color);
 }
 
-void lcd_circle(uint8_t x0, uint8_t y0, uint8_t radius, uint16_t color) {
+__attribute__((always_inline)) inline static void lcd_circle(uint8_t x0, uint8_t y0, uint8_t radius, uint16_t color) {
   assert(ST7735_READY);
   assert(!SPI_IS_OPEN);
   // Draw the biggest rectangle you can, recursively, down to 1 pixel
@@ -118,7 +117,7 @@ void lcd_circle(uint8_t x0, uint8_t y0, uint8_t radius, uint16_t color) {
   circle_remainder_recursive(x0, y0, x0, y1, rsq, color);
 }
 
-void lcd_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t c) {
+static void lcd_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t c) {
   assert(ST7735_READY);
   assert(!SPI_IS_OPEN);
   int8_t flipx, flipy, incr, zncr;
@@ -157,7 +156,7 @@ void lcd_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t c) {
 }
 
 // Vertical line.
-void lcd_look_to_the_cookie(uint8_t x0, uint8_t y0, uint8_t x1, uint16_t color1, uint16_t color2) {
+__attribute__((always_inline)) inline static void lcd_look_to_the_cookie(uint8_t x0, uint8_t y0, uint8_t x1, uint16_t color1, uint16_t color2) {
   assert(ST7735_READY);
   assert(!SPI_IS_OPEN);
   spi_open();
@@ -167,12 +166,12 @@ void lcd_look_to_the_cookie(uint8_t x0, uint8_t y0, uint8_t x1, uint16_t color1,
   spi_close();
 }
 
-void lcd_set_screen(uint16_t color) {
+__attribute__((always_inline)) inline static void lcd_set_screen(uint16_t color) {
   assert(ST7735_READY);
   lcd_block(0, 0, 159, 127, color);
 }
 
-void lcd_string(uint8_t x, uint8_t y, char const* str, uint16_t fg, uint16_t bg) {
+__attribute__((always_inline)) inline static void lcd_string(uint8_t x, uint8_t y, char const* str, uint16_t fg, uint16_t bg) {
   assert(ST7735_READY);
   assert(!SPI_IS_OPEN);
   if (!str) { return; }

@@ -1,9 +1,11 @@
 #ifndef STRINGIFY_H
 #define STRINGIFY_H
 
-// The classic
-
 #define STRINGIFY(...) STRINGIFY_LITERAL(__VA_ARGS__)
 #define STRINGIFY_LITERAL(...) #__VA_ARGS__
+
+#define PASTE(A, B) PASTE_LITERAL(A, B)
+#define PASTE_LITERAL(A, B) PASTE_LITERAL_LITERAL(A, B)
+#define PASTE_LITERAL_LITERAL(A, B) A##B
 
 #endif // STRINGIFY_H
