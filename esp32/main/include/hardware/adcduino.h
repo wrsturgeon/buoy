@@ -4,10 +4,8 @@
 #include </Users/willsturgeon/esp/esp-idf/components/driver/deprecated/driver/adc.h>
 #include <hal/gpio_hal.h>
 #include <soc/adc_channel.h>
-#include <soc/dac_channel.h>
 #include <soc/rtc_io_reg.h>
 #include <soc/sens_reg.h>
-#include <soc/touch_sensor_channel.h>
 
 #include <stdint.h>
 
@@ -35,18 +33,6 @@ typedef enum {
   ADC_ATTENDB_MAX
 } adc_attenuation_t;
 
-int const touch_sensor_channel_io_map[] = {
-    TOUCH_PAD_NUM0_GPIO_NUM,
-    TOUCH_PAD_NUM1_GPIO_NUM,
-    TOUCH_PAD_NUM2_GPIO_NUM,
-    TOUCH_PAD_NUM3_GPIO_NUM,
-    TOUCH_PAD_NUM4_GPIO_NUM,
-    TOUCH_PAD_NUM5_GPIO_NUM,
-    TOUCH_PAD_NUM6_GPIO_NUM,
-    TOUCH_PAD_NUM7_GPIO_NUM,
-    TOUCH_PAD_NUM8_GPIO_NUM,
-    TOUCH_PAD_NUM9_GPIO_NUM};
-
 uint16_t FUCK(void) {
 
   //  <<< analogReadResolution(12);
@@ -57,30 +43,6 @@ uint16_t FUCK(void) {
   //      <<< __analogInit();
   //        <<< __analogSetClockDiv(1);
   adc_set_clk_div(ADC_CLK_DIV);
-
-  //    <<< int8_t pad = digitalPinToTouchChannel(36);
-  int8_t pad = -1;
-  for (uint8_t i = 0; i < SOC_TOUCH_SENSOR_NUM; i++) {
-    if (touch_sensor_channel_io_map[i] == 36) {
-      pad = i;
-      break;
-    }
-  }
-
-  if (pad >= 0) {
-    uint32_t touch = READ_PERI_REG(SENS_SAR_TOUCH_ENABLE_REG);
-    if (touch & (1 << pad)) {
-      touch &= ~((1 << (pad + SENS_TOUCH_PAD_OUTEN2_S)) | (1 << (pad + SENS_TOUCH_PAD_OUTEN1_S)) | (1 << (pad + SENS_TOUCH_PAD_WORKEN_S)));
-      WRITE_PERI_REG(SENS_SAR_TOUCH_ENABLE_REG, touch);
-    }
-  }
-#if SOC_DAC_SUPPORTED
-  else if (36 == DAC_CHANNEL_1_GPIO_NUM) {
-    CLEAR_PERI_REG_MASK(RTC_IO_PAD_DAC1_REG, RTC_IO_PDAC1_XPD_DAC | RTC_IO_PDAC1_DAC_XPD_FORCE); // stop dac1
-  } else if (36 == DAC_CHANNEL_2_GPIO_NUM) {
-    CLEAR_PERI_REG_MASK(RTC_IO_PAD_DAC2_REG, RTC_IO_PDAC2_XPD_DAC | RTC_IO_PDAC2_DAC_XPD_FORCE); // stop dac2
-  }
-#endif
 
   //    <<< pinMode(36, ANALOG);
   gpio_hal_context_t gpiohal;
