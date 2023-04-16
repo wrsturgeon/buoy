@@ -36,7 +36,8 @@ typedef enum {
 } adc_attenuation_t;
 
 __attribute__((always_inline)) inline static void dropin_adc1_config_width(void) {
-  adc_oneshot_ll_set_output_bits(ADC_UNIT_1, ADC_BIT_WIDTH);
+  REG(SENS_SAR_START_FORCE_REG) |= SENS_SAR1_BIT_WIDTH_M; // 0x3 => full 12 bits
+  REG(SENS_SAR_READ_CTRL_REG) |= SENS_SAR1_SAMPLE_BIT_M;  // ditto ^
 }
 
 __attribute__((always_inline)) inline static void dropin_adc_set_clk_div(uint8_t d) {
