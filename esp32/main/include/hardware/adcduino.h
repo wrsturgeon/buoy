@@ -65,7 +65,7 @@ __attribute__((always_inline)) inline static uint16_t dropin_adc1_get_raw(void) 
 
 uint16_t FUCK(void) {
   dropin_adc1_config_width();
-  dropin_adc_set_clk_div(ADC_CLK_DIV);
+  // dropin_adc_set_clk_div(ADC_CLK_DIV);
   dropin_gpio_config();
   dropin_adc1_config_channel_atten();
   return dropin_adc1_get_raw();
