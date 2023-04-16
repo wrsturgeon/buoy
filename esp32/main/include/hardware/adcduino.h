@@ -59,7 +59,6 @@ uint16_t FUCK(void) {
   //      <<< __analogInit();
   //        <<< __analogSetClockDiv(1);
   adc_set_clk_div(ADC_CLK_DIV);
-  ESP_ERROR_CHECK(adc1_config_width(12));
   for (int i = 0; i < SOC_GPIO_PIN_COUNT; i++) {
     __pin_attenuation[i] = ADC_ATTENDB_MAX;
   }
@@ -120,8 +119,6 @@ uint16_t FUCK(void) {
   adc1_config_channel_atten(ADC1_GPIO36_CHANNEL, attenuation);
 #endif
   //    <<< __analogInit();
-  adc_set_clk_div(ADC_CLK_DIV);
-  ESP_ERROR_CHECK(adc1_config_width(12));
   for (int i = 0; i < SOC_GPIO_PIN_COUNT; i++) {
     __pin_attenuation[i] = ADC_ATTENDB_MAX;
   }
