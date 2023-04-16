@@ -52,16 +52,16 @@ __attribute__((always_inline)) inline static void dropin_adc_set_clk_div(uint8_t
   ESP_ERROR_CHECK(adc_set_clk_div(d));
 }
 
+__attribute__((always_inline)) inline static void dropin_rtc_gpio_deinit(void) { rtc_gpio_deinit(ADC_PIN); }
+__attribute__((always_inline)) inline static void dropin_gpio_set_intr_type(void) { gpio_set_intr_type(ADC_PIN, GPIO_INTR_DISABLE); }
+__attribute__((always_inline)) inline static void dropin_gpio_intr_disable(void) { gpio_intr_disable(ADC_PIN); }
+__attribute__((always_inline)) inline static void dropin_gpio_hal_iomux_func_sel(void) { gpio_hal_iomux_func_sel(ADC_IO_REG, PIN_FUNC_GPIO); }
+
 __attribute__((always_inline)) inline static void dropin_gpio_config(void) {
-
-  rtc_gpio_deinit(ADC_PIN);
-
-  gpio_set_intr_type(ADC_PIN, GPIO_INTR_DISABLE);
-
-  gpio_intr_disable(ADC_PIN);
-
-  /* By default, all the pins have to be configured as GPIO pins. */
-  gpio_hal_iomux_func_sel(ADC_IO_REG, PIN_FUNC_GPIO);
+  dropin_rtc_gpio_deinit();
+  dropin_gpio_set_intr_type();
+  dropin_gpio_intr_disable();
+  dropin_gpio_hal_iomux_func_sel();
 }
 
 __attribute__((always_inline)) inline static void dropin_adc1_config_channel_atten(void) {
