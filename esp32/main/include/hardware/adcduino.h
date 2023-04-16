@@ -59,10 +59,7 @@ __attribute__((always_inline)) inline static void dropin_adc_set_clk_div(uint8_t
 }
 
 __attribute__((always_inline)) inline static void dropin_rtc_gpio_deinit(void) {
-  // vPortEnterCritical(&rtc_spinlock);
-  // rtcio_hal_function_select(RTC_IO_CHANNEL, RTCIO_FUNC_DIGITAL);
-  CLEAR_PERI_REG_MASK(rtc_io_desc[RTC_IO_CHANNEL].reg, (rtc_io_desc[RTC_IO_CHANNEL].mux));
-  // vPortExitCritical(&rtc_spinlock);
+  REG(rtc_io_desc[RTC_IO_CHANNEL].reg) &= ~rtc_io_desc[RTC_IO_CHANNEL].mux;
 }
 
 __attribute__((always_inline)) inline static void dropin_gpio_set_intr_type(void) { gpio_set_intr_type(ADC_PIN, GPIO_INTR_DISABLE); }
