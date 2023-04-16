@@ -1,7 +1,7 @@
 #ifndef TIMING_H
 #define TIMING_H
 
-#include "bitbang/reg.h"
+#include "hardware/reg.h"
 #include "stringify.h"
 
 #include <esp_attr.h>
