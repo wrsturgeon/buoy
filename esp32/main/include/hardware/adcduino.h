@@ -33,24 +33,39 @@ typedef enum {
   ADC_ATTENDB_MAX
 } adc_attenuation_t;
 
-static gpio_config_t const GPIO_CONF = {
-    .pin_bit_mask = (1ULL << 36),          /*!< GPIO pin: set with bit mask, each bit maps to a GPIO */
-    .mode = GPIO_MODE_DISABLE,             /*!< GPIO mode: set input/output mode                     */
-    .pull_up_en = GPIO_PULLUP_DISABLE,     /*!< GPIO pull-up                                         */
-    .pull_down_en = GPIO_PULLDOWN_DISABLE, /*!< GPIO pull-down                                       */
-    .intr_type = GPIO_INTR_DISABLE,
-};
+__attribute__((always_inline)) inline static void dropin_adc1_config_width(uint8_t b) {
+  ESP_ERROR_CHECK(adc1_config_width(b));
+}
+
+__attribute__((always_inline)) inline static void dropin_adc_set_clk_div(uint8_t d) {
+  ESP_ERROR_CHECK(adc_set_clk_div(d));
+}
+
+__attribute__((always_inline)) inline static void dropin_gpio_config(void) {
+  static gpio_config_t const GPIO_CONF = {
+      .pin_bit_mask = (1ULL << 36),          /*!< GPIO pin: set with bit mask, each bit maps to a GPIO */
+      .mode = GPIO_MODE_DISABLE,             /*!< GPIO mode: set input/output mode                     */
+      .pull_up_en = GPIO_PULLUP_DISABLE,     /*!< GPIO pull-up                                         */
+      .pull_down_en = GPIO_PULLDOWN_DISABLE, /*!< GPIO pull-down                                       */
+      .intr_type = GPIO_INTR_DISABLE,
+  };
+  ESP_ERROR_CHECK(gpio_config(&GPIO_CONF));
+}
+
+__attribute__((always_inline)) inline static void dropin_adc1_config_channel_atten(void) {
+  ESP_ERROR_CHECK(adc1_config_channel_atten(ADC1_GPIO36_CHANNEL, ADC_ATTENUATION));
+}
+
+__attribute__((always_inline)) inline static uint16_t dropin_adc1_get_raw(void) {
+  return adc1_get_raw(ADC1_GPIO36_CHANNEL);
+}
 
 uint16_t FUCK(void) {
-  ESP_ERROR_CHECK(adc1_config_width(12));
-  ESP_ERROR_CHECK(adc_set_clk_div(ADC_CLK_DIV));
-
-  //    <<< pinMode(36, ANALOG);
-  ESP_ERROR_CHECK(gpio_config(&GPIO_CONF));
-
-  adc1_config_channel_atten(ADC1_GPIO36_CHANNEL, ADC_ATTENUATION);
-
-  return adc1_get_raw(ADC1_GPIO36_CHANNEL);
+  dropin_adc1_config_width(12);
+  dropin_adc_set_clk_div(ADC_CLK_DIV);
+  dropin_gpio_config();
+  dropin_adc1_config_channel_atten();
+  return dropin_adc1_get_raw();
 }
 
 #endif // ADCDUINO_H
