@@ -47,8 +47,6 @@ int const touch_sensor_channel_io_map[] = {
     TOUCH_PAD_NUM8_GPIO_NUM,
     TOUCH_PAD_NUM9_GPIO_NUM};
 
-static adc_attenuation_t __pin_attenuation[SOC_GPIO_PIN_COUNT];
-
 uint16_t FUCK(void) {
 
   //  <<< analogReadResolution(12);
@@ -59,9 +57,6 @@ uint16_t FUCK(void) {
   //      <<< __analogInit();
   //        <<< __analogSetClockDiv(1);
   adc_set_clk_div(ADC_CLK_DIV);
-  for (int i = 0; i < SOC_GPIO_PIN_COUNT; i++) {
-    __pin_attenuation[i] = ADC_ATTENDB_MAX;
-  }
 
   //    <<< int8_t pad = digitalPinToTouchChannel(36);
   int8_t pad = -1;
@@ -111,26 +106,16 @@ uint16_t FUCK(void) {
 #endif // ANALOG < 0x20
   ESP_ERROR_CHECK(gpio_config(&conf));
 
-  //    <<< __analogSetPinAttenuation(36, (__pin_attenuation[36] != ADC_ATTENDB_MAX) ? __pin_attenuation[36] : __analogAttenuation);
-  adc_attenuation_t const attenuation = ((__pin_attenuation[36] != ADC_ATTENDB_MAX) ? __pin_attenuation[36] : ADC_ATTENUATION);
 #if (ADC1_GPIO36_CHANNEL > (SOC_ADC_MAX_CHANNEL_NUM - 1))
-  adc2_config_channel_atten(ADC1_GPIO36_CHANNEL - SOC_ADC_MAX_CHANNEL_NUM, attenuation);
+  adc2_config_channel_atten(ADC1_GPIO36_CHANNEL - SOC_ADC_MAX_CHANNEL_NUM, ADC_ATTENUATION);
 #else
-  adc1_config_channel_atten(ADC1_GPIO36_CHANNEL, attenuation);
+  adc1_config_channel_atten(ADC1_GPIO36_CHANNEL, ADC_ATTENUATION);
 #endif
-  //    <<< __analogInit();
-  for (int i = 0; i < SOC_GPIO_PIN_COUNT; i++) {
-    __pin_attenuation[i] = ADC_ATTENDB_MAX;
-  }
-
-  if ((__pin_attenuation[36] != ADC_ATTENDB_MAX) || (attenuation != ADC_ATTENUATION)) {
-    __pin_attenuation[36] = attenuation;
-  }
 
   int value;
 #if (ADC1_GPIO36_CHANNEL > (SOC_ADC_MAX_CHANNEL_NUM - 1))
   esp_err_t r;
-  switch (r = adc2_get_raw(ADC1_GPIO36_CHANNEL - SOC_ADC_MAX_CHANNEL_NUM, __analogWidth, &value)) {
+  switch (r = adc2_get_raw(ADC1_GPIO36_CHANNEL - SOC_ADC_MAX_CHANNEL_NUM, 12, &value)) {
   case ESP_OK: break;
   case ESP_ERR_INVALID_STATE: log_e("GPIO%u: %s: ADC2 not initialized yet.", 36, esp_err_to_name(r)); return -1;
   case ESP_ERR_TIMEOUT: log_e("GPIO%u: %s: ADC2 is in use by Wi-Fi. Please see https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/adc.html#adc-limitations for more info", 36, esp_err_to_name(r)); return -1;
