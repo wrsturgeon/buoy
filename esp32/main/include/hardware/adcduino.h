@@ -10,6 +10,8 @@
 #include <hal/gpio_hal.h>
 #include <soc/adc_channel.h>
 #include <soc/io_mux_reg.h>
+#include <soc/rtc_io_channel.h>
+#include <soc/rtc_io_periph.h>
 #include <soc/rtc_io_reg.h>
 #include <soc/sens_reg.h>
 
@@ -21,6 +23,8 @@
 #define ADC_BIT_WIDTH 12
 #define ADC_PIN 36
 #define ADC_IO_REG PASTE(PASTE(IO_MUX_GPIO, ADC_PIN), _REG)
+
+#define RTC_IO_CHANNEL PASTE(PASTE(RTCIO_GPIO, ADC_PIN), _CHANNEL)
 
 // GPIO FUNCTIONS
 #define INPUT 0x01
@@ -43,6 +47,8 @@ typedef enum {
   ADC_ATTENDB_MAX
 } adc_attenuation_t;
 
+extern rtc_io_desc_t const rtc_io_desc[SOC_RTCIO_PIN_COUNT];
+
 __attribute__((always_inline)) inline static void dropin_adc1_config_width(void) {
   REG(SENS_SAR_START_FORCE_REG) |= SENS_SAR1_BIT_WIDTH_M; // 0x3 => full 12 bits
   REG(SENS_SAR_READ_CTRL_REG) |= SENS_SAR1_SAMPLE_BIT_M;  // ditto ^
@@ -52,9 +58,17 @@ __attribute__((always_inline)) inline static void dropin_adc_set_clk_div(uint8_t
   ESP_ERROR_CHECK(adc_set_clk_div(d));
 }
 
-__attribute__((always_inline)) inline static void dropin_rtc_gpio_deinit(void) { rtc_gpio_deinit(ADC_PIN); }
+__attribute__((always_inline)) inline static void dropin_rtc_gpio_deinit(void) {
+  // vPortEnterCritical(&rtc_spinlock);
+  // rtcio_hal_function_select(RTC_IO_CHANNEL, RTCIO_FUNC_DIGITAL);
+  CLEAR_PERI_REG_MASK(rtc_io_desc[RTC_IO_CHANNEL].reg, (rtc_io_desc[RTC_IO_CHANNEL].mux));
+  // vPortExitCritical(&rtc_spinlock);
+}
+
 __attribute__((always_inline)) inline static void dropin_gpio_set_intr_type(void) { gpio_set_intr_type(ADC_PIN, GPIO_INTR_DISABLE); }
+
 __attribute__((always_inline)) inline static void dropin_gpio_intr_disable(void) { gpio_intr_disable(ADC_PIN); }
+
 __attribute__((always_inline)) inline static void dropin_gpio_hal_iomux_func_sel(void) { gpio_hal_iomux_func_sel(ADC_IO_REG, PIN_FUNC_GPIO); }
 
 __attribute__((always_inline)) inline static void dropin_gpio_config(void) {
