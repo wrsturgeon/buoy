@@ -97,8 +97,8 @@ __attribute__((always_inline)) inline static void dropin_adc1_config_channel_att
 
 __attribute__((always_inline)) inline static uint16_t dropin_adc1_get_raw(void) {
 
-  adc_ll_hall_disable();                              // Disable other peripherals.
-  adc_ll_amp_disable();                               // Currently the LNA is not open, close it by default.
+  // adc_ll_hall_disable();                              // Disable other peripherals.
+  // adc_ll_amp_disable();                               // Currently the LNA is not open, close it by default.
   adc_ll_set_controller(ADC_UNIT_1, ADC_LL_CTRL_RTC); // Set controller
   adc_oneshot_ll_set_channel(ADC_UNIT_1, ADC_CHANNEL);
 
