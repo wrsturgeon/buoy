@@ -5,7 +5,7 @@
 // https://www.adafruit.com/product/358
 // https://cdn-shop.adafruit.com/datasheets/ST7735R_V0.2.pdf
 
-#include "gpio.h"
+#include "hardware/gpio.h"
 #include "pins.h"
 #include "spill.h"
 #include "st7735.h"

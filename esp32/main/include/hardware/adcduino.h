@@ -5,14 +5,9 @@
 
 #include <soc/adc_channel.h>
 #include <soc/gpio_reg.h>
-#include <soc/io_mux_reg.h>
-#include <soc/rtc_io_channel.h>
 #include <soc/rtc_io_periph.h>
-#include <soc/rtc_io_reg.h>
 #include <soc/sens_reg.h>
 #include <soc/syscon_reg.h>
-
-#include <stdint.h>
 
 #define ADC_ATTENUATION 3
 _Static_assert((ADC_ATTENUATION & 3U) == ADC_ATTENUATION);
@@ -21,16 +16,7 @@ _Static_assert((ADC_ATTENUATION & 3U) == ADC_ATTENUATION);
 #define ADC_PIN 36
 #define ADC_CHANNEL PASTE(PASTE(ADC1_GPIO, ADC_PIN), _CHANNEL)
 #define ADC_IO_REG PASTE(PASTE(IO_MUX_GPIO, ADC_PIN), _REG)
-
 #define RTC_IO_CHANNEL PASTE(PASTE(RTCIO_GPIO, ADC_PIN), _CHANNEL)
-
-typedef enum {
-  ADC_0db,
-  ADC_2_5db,
-  ADC_6db,
-  ADC_11db,
-  ADC_ATTENDB_MAX
-} adc_attenuation_t;
 
 extern rtc_io_desc_t const rtc_io_desc[SOC_RTCIO_PIN_COUNT];
 

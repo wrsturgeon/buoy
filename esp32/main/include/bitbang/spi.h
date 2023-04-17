@@ -1,7 +1,7 @@
 #ifndef BITBANG_SPI_H
 #define BITBANG_SPI_H
 
-#include "gpio.h"
+#include "hardware/gpio.h"
 #include "pins.h"
 
 #include <rom/ets_sys.h>

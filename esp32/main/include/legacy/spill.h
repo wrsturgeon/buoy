@@ -5,7 +5,7 @@
 // a FUCKING PAIN IN THE ASS to write!
 // No third-party libraries here :_)
 
-#include "gpio.h"
+#include "hardware/gpio.h"
 #include "hardware/reg.h"
 
 #include <soc/spi_reg.h>

@@ -4,7 +4,7 @@
 // See page 120 (7.3: GP-SPI)
 // https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf
 
-#include "gpio.h"
+#include "hardware/gpio.h"
 #include "pins.h"
 
 #include <driver/spi_master.h>
