@@ -6,7 +6,7 @@ flash: build/$(pwd | rev | cut -d '/' -f 1 | rev).bin
 	idf.py monitor
 
 build/%: $(shell find main -type f) | deps-installed
-	git submodule update --init --recursive
+	git submodule update --init --recursive --remote
 	${EXPORT_IDF} && idf.py build
 	mkdir -p .vscode
 	echo '{' > .vscode/c_cpp_properties.json

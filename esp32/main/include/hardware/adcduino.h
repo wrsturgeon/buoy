@@ -98,7 +98,7 @@ __attribute__((always_inline)) inline static void dropin_adc1_config_channel_att
 }
 
 __attribute__((always_inline)) inline static uint16_t dropin_adc1_get_raw(void) {
-  adc1_rtc_mode_acquire();
+  // adc1_rtc_mode_acquire();
 
   adc_ll_hall_disable();                              // Disable other peripherals.
   adc_ll_amp_disable();                               // Currently the LNA is not open, close it by default.
@@ -117,7 +117,7 @@ __attribute__((always_inline)) inline static uint16_t dropin_adc1_get_raw(void) 
   uint16_t adc_value = adc_oneshot_ll_get_raw_result(ADC_UNIT_1);
   adc_oneshot_ll_disable_all_unit();
 
-  adc1_lock_release();
+  // adc1_lock_release();
   return adc_value;
 }
 
