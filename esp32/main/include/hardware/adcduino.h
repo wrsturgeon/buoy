@@ -112,6 +112,8 @@ __attribute__((always_inline)) inline static void dropin_rtc_gpio_init(void) { r
 __attribute__((always_inline)) inline static void dropin_rtc_gpio_set_direction(void) { rtc_gpio_set_direction(ADC_PIN, RTC_GPIO_MODE_DISABLED); }
 __attribute__((always_inline)) inline static void dropin_rtc_gpio_pulldown_dis(void) { rtc_gpio_pulldown_dis(ADC_PIN); }
 __attribute__((always_inline)) inline static void dropin_rtc_gpio_pullup_dis(void) { rtc_gpio_pullup_dis(ADC_PIN); }
+__attribute__((always_inline)) inline static void dropin_adc_ll_hall_disable(void) { adc_ll_hall_disable(); }
+__attribute__((always_inline)) inline static void dropin_adc_ll_amp_disable(void) { adc_ll_amp_disable(); }
 
 __attribute__((always_inline)) inline static void dropin_adc1_config_channel_atten(void) {
   dropin_rtc_gpio_init();
@@ -122,8 +124,8 @@ __attribute__((always_inline)) inline static void dropin_adc1_config_channel_att
   REG(SENS_SAR_MEAS_CTRL2_REG) &= ~SENS_SAR1_DAC_XPD_FSM_M; // Decouple DAC from ADC
   REG(SENS_SAR_READ_CTRL_REG) |= SENS_SAR1_DATA_INV_M;      // Invert data
   force_32b_clear_and_set(SENS_SAR_READ_CTRL_REG, SENS_SAR1_CLK_DIV_M, (ADC_CLK_DIV << SENS_SAR1_CLK_DIV_S));
-  adc_ll_hall_disable(); // Disable other peripherals.
-  adc_ll_amp_disable();  // Currently the LNA is not open, close it by default.
+  dropin_adc_ll_hall_disable(); // Disable other peripherals.
+  dropin_adc_ll_amp_disable();  // Currently the LNA is not open, close it by default.
 
   // adc_oneshot_ll_set_atten(ADC_UNIT_1, ADC_CHANNEL, ADC_ATTENUATION);
   REG(SENS_SAR_ATTEN1_REG) &= ~(3U << (ADC_CHANNEL << 1U));
@@ -132,8 +134,8 @@ __attribute__((always_inline)) inline static void dropin_adc1_config_channel_att
 
 __attribute__((always_inline)) inline static uint16_t dropin_adc1_get_raw(void) {
 
-  // adc_ll_hall_disable();                              // Disable other peripherals.
-  // adc_ll_amp_disable();                               // Currently the LNA is not open, close it by default.
+  dropin_adc_ll_hall_disable();                                                           // Disable other peripherals.
+  dropin_adc_ll_amp_disable();                                                            // Currently the LNA is not open, close it by default.
   REG(SENS_SAR_READ_CTRL_REG) &= ~SENS_SAR1_DIG_FORCE_M;                                  // RTC control instead of digital
   REG(SENS_SAR_MEAS_START1_REG) |= (SENS_MEAS1_START_FORCE_M | SENS_SAR1_EN_PAD_FORCE_M); // Software control instead of ULP control
   REG(SENS_SAR_TOUCH_CTRL1_REG) |= (SENS_XPD_HALL_FORCE_M | SENS_HALL_PHASE_FORCE_M);     // Software control of Hall sensor as well (so we can shut it up)
