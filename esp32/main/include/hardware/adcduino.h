@@ -19,7 +19,7 @@
 #include <stdint.h>
 
 #define ADC_ATTENUATION 3
-#define ADC_CLK_DIV 1
+#define ADC_CLK_DIV ADC_LL_SAR_CLK_DIV_DEFAULT(ADC_UNIT_1) // 2
 #define ADC_BIT_WIDTH 12
 #define ADC_PIN 36
 #define ADC_CHANNEL PASTE(PASTE(ADC1_GPIO, ADC_PIN), _CHANNEL)
@@ -37,6 +37,7 @@ typedef enum {
 
 extern rtc_io_desc_t const rtc_io_desc[SOC_RTCIO_PIN_COUNT];
 
+// not sure why, but some registers require 32-bit atomic access
 __attribute__((always_inline)) inline static volatile uint32_t force_32b_read(uint32_t const volatile* const restrict reg, uint32_t mask) {
   volatile uint32_t v32b = *reg;
   return v32b & mask;
@@ -113,20 +114,14 @@ __attribute__((always_inline)) inline static void dropin_rtc_gpio_pulldown_dis(v
 __attribute__((always_inline)) inline static void dropin_rtc_gpio_pullup_dis(void) { rtc_gpio_pullup_dis(ADC_PIN); }
 
 __attribute__((always_inline)) inline static void dropin_adc1_config_channel_atten(void) {
-  // ESP_ERROR_CHECK(adc1_config_channel_atten(ADC_CHANNEL, ADC_ATTENUATION));
-
-  // adc_common_gpio_init(ADC_UNIT_1, ADC_CHANNEL);
   dropin_rtc_gpio_init();
   dropin_rtc_gpio_set_direction();
   dropin_rtc_gpio_pulldown_dis();
   dropin_rtc_gpio_pullup_dis();
 
-  // adc_rtc_chan_init(ADC_UNIT_1);
-  /* Workaround: Disable the synchronization operation function of ADC1 and DAC.
-     If enabled(default), ADC RTC controller sampling will cause the DAC channel output voltage. */
   REG(SENS_SAR_MEAS_CTRL2_REG) &= ~SENS_SAR1_DAC_XPD_FSM_M; // Decouple DAC from ADC
   REG(SENS_SAR_READ_CTRL_REG) |= SENS_SAR1_DATA_INV_M;      // Invert data
-  adc_ll_set_sar_clk_div(ADC_UNIT_1, ADC_LL_SAR_CLK_DIV_DEFAULT(ADC_UNIT_1));
+  force_32b_clear_and_set(SENS_SAR_READ_CTRL_REG, SENS_SAR1_CLK_DIV_M, (ADC_CLK_DIV << SENS_SAR1_CLK_DIV_S));
 #ifdef CONFIG_IDF_TARGET_ESP32
   adc_ll_hall_disable(); // Disable other peripherals.
   adc_ll_amp_disable();  // Currently the LNA is not open, close it by default.
