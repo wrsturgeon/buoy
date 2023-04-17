@@ -3,6 +3,8 @@
 
 #include "stringify.h"
 
+#include <../deprecated/adc1_private.h>
+#include <../deprecated/driver/adc.h>
 #include </Users/willsturgeon/esp/esp-idf/components/driver/deprecated/driver/adc.h>
 #include <driver/rtc_io.h>
 #include <esp_log.h>
@@ -22,6 +24,7 @@
 #define ADC_CLK_DIV 1
 #define ADC_BIT_WIDTH 12
 #define ADC_PIN 36
+#define ADC_CHANNEL PASTE(PASTE(ADC1_GPIO, ADC_PIN), _CHANNEL)
 #define ADC_IO_REG PASTE(PASTE(IO_MUX_GPIO, ADC_PIN), _REG)
 
 #define RTC_IO_CHANNEL PASTE(PASTE(RTCIO_GPIO, ADC_PIN), _CHANNEL)
@@ -103,7 +106,64 @@ __attribute__((always_inline)) inline static void dropin_adc1_config_channel_att
 }
 
 __attribute__((always_inline)) inline static uint16_t dropin_adc1_get_raw(void) {
-  return adc1_get_raw(PASTE(PASTE(ADC1_GPIO, ADC_PIN), _CHANNEL));
+  int adc_value;
+  adc1_rtc_mode_acquire();
+
+#if SOC_ADC_CALIBRATION_V1_SUPPORTED
+  adc_atten_t atten = adc_ll_get_atten(ADC_UNIT_1, ADC_CHANNEL);
+  adc_set_hw_calibration_code(ADC_UNIT_1, atten);
+#endif // SOC_ADC_CALIBRATION_V1_SUPPORTED
+
+  // SARADC1_ENTER();
+#ifdef CONFIG_IDF_TARGET_ESP32
+  adc_ll_hall_disable(); // Disable other peripherals.
+  adc_ll_amp_disable();  // Currently the LNA is not open, close it by default.
+#endif
+  adc_ll_set_controller(ADC_UNIT_1, ADC_LL_CTRL_RTC); // Set controller
+  adc_oneshot_ll_set_channel(ADC_UNIT_1, ADC_CHANNEL);
+
+  // adc_hal_convert(ADC_UNIT_1, ADC_CHANNEL, clk_src_freq_hz, &adc_value); // Start conversion, For ADC1, the data always valid.
+  adc_oneshot_ll_clear_event(ADC_LL_EVENT_ADC1_ONESHOT_DONE);
+  adc_oneshot_ll_disable_all_unit();
+  adc_oneshot_ll_enable(ADC_UNIT_1);
+  adc_oneshot_ll_set_channel(ADC_UNIT_1, ADC_CHANNEL);
+  { // adc_hal_onetime_start(ADC_UNIT_1, clk_src_freq_hz);
+#if SOC_ADC_DIG_CTRL_SUPPORTED && !SOC_ADC_RTC_CTRL_SUPPORTED
+    printf("NOTE THAT (SOC_ADC_DIG_CTRL_SUPPORTED && !SOC_ADC_RTC_CTRL_SUPPORTED)\r\n");
+    (void)ADC_UNIT_1;
+    /**
+     * There is a hardware limitation. If the APB clock frequency is high, the step of this reg signal: ``onetime_start`` may not be captured by the
+     * ADC digital controller (when its clock frequency is too slow). A rough estimate for this step should be at least 3 ADC digital controller
+     * clock cycle.
+     */
+    uint32_t digi_clk = clk_src_freq_hz / (ADC_LL_CLKM_DIV_NUM_DEFAULT + ADC_LL_CLKM_DIV_A_DEFAULT / ADC_LL_CLKM_DIV_B_DEFAULT + 1);
+    // Convert frequency to time (us). Since decimals are removed by this division operation. Add 1 here in case of the fact that delay is not enough.
+    uint32_t delay = (1000 * 1000) / digi_clk + 1;
+    // 3 ADC digital controller clock cycle
+    delay = delay * 3;
+    // This coefficient (8) is got from test, and verified from DT. When digi_clk is not smaller than ``APB_CLK_FREQ/8``, no delay is needed.
+    if (digi_clk >= APB_CLK_FREQ / 8) {
+      delay = 0;
+    }
+
+    adc_oneshot_ll_start(false);
+    esp_rom_delay_us(delay);
+    adc_oneshot_ll_start(true);
+
+    // No need to delay here. Becuase if the start signal is not seen, there won't be a done intr.
+#else
+    adc_oneshot_ll_start(ADC_UNIT_1);
+#endif
+  }
+  do {
+  } while (adc_oneshot_ll_get_event(ADC_LL_EVENT_ADC1_ONESHOT_DONE) != true);
+  adc_value = adc_oneshot_ll_get_raw_result(ADC_UNIT_1);
+  adc_oneshot_ll_disable_all_unit();
+
+  // SARADC1_EXIT();
+
+  adc1_lock_release();
+  return adc_value;
 }
 
 uint16_t FUCK(void) {
@@ -111,6 +171,7 @@ uint16_t FUCK(void) {
   // dropin_adc_set_clk_div(ADC_CLK_DIV);
   dropin_gpio_config();
   dropin_adc1_config_channel_atten();
+  // NOTE: you can apparently safely delete everything above this line, but I haven't tested after unplugging
   return dropin_adc1_get_raw();
 }
 
