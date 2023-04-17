@@ -1,7 +1,12 @@
 # The _Heart_-Throbs ❤️
 ## UPenn ESE 350 Final Project
 
-Notable features:
+&nbsp;
+
+### Instructions
+Just run `make`. (This should install dependencies as well).
+
+### Notable features:
 - Bare-metal C on the ESP32, manual build script & flashing routine instead of the Arduino IDE
 - Scrolling display with interpolated lines, corrected _before_ displaying to pin the moving average, plus a real-time running peak (surprisingly difficult!), all fast enough to display in real time
 - Fixed-point division, aligned with real-world seconds (by some fucking crazy unit math), without overflow on the full range of possible human heart rates
