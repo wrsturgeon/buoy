@@ -113,7 +113,15 @@ __attribute__((always_inline)) inline static void dropin_rtc_gpio_set_direction(
 __attribute__((always_inline)) inline static void dropin_rtc_gpio_pulldown_dis(void) { rtc_gpio_pulldown_dis(ADC_PIN); }
 __attribute__((always_inline)) inline static void dropin_rtc_gpio_pullup_dis(void) { rtc_gpio_pullup_dis(ADC_PIN); }
 __attribute__((always_inline)) inline static void dropin_adc_ll_hall_disable(void) { REG(RTC_IO_HALL_SENS_REG) &= ~RTC_IO_XPD_HALL_M; }
-__attribute__((always_inline)) inline static void dropin_adc_ll_amp_disable(void) { adc_ll_amp_disable(); }
+
+__attribute__((always_inline)) inline static void dropin_adc_ll_amp_disable(void) {
+  REG(SENS_SAR_MEAS_WAIT2_REG) &= ~SENS_FORCE_XPD_AMP_M;
+  REG(SENS_SAR_MEAS_WAIT2_REG) |= (SENS_FORCE_XPD_AMP_PD << SENS_FORCE_XPD_AMP_S);
+  REG(SENS_SAR_MEAS_CTRL_REG) &= ~(SENS_AMP_RST_FB_FSM_M | SENS_AMP_SHORT_REF_FSM_M | SENS_AMP_SHORT_REF_GND_FSM_M);
+  force_32b_clear_and_set(SENS_SAR_MEAS_WAIT1_REG, SENS_SAR_AMP_WAIT1_M, 1ULL << SENS_SAR_AMP_WAIT1_S);
+  force_32b_clear_and_set(SENS_SAR_MEAS_WAIT1_REG, SENS_SAR_AMP_WAIT2_M, 1ULL << SENS_SAR_AMP_WAIT2_S);
+  force_32b_clear_and_set(SENS_SAR_MEAS_WAIT2_REG, SENS_SAR_AMP_WAIT3_M, 1ULL << SENS_SAR_AMP_WAIT3_S);
+}
 
 __attribute__((always_inline)) inline static void dropin_adc1_config_channel_atten(void) {
   dropin_rtc_gpio_init();
