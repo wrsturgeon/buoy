@@ -3,19 +3,19 @@
 
 #include "stringify.h"
 
-#include <../deprecated/driver/adc.h>
 #include <driver/rtc_io.h>
-#include <esp_log.h>
 #include <hal/adc_ll.h>
-#include <hal/gpio_hal.h>
+#include <hal/dac_ll.h>
+
 #include <soc/adc_channel.h>
+#include <soc/gpio_reg.h>
 #include <soc/io_mux_reg.h>
 #include <soc/rtc_io_channel.h>
 #include <soc/rtc_io_periph.h>
 #include <soc/rtc_io_reg.h>
 #include <soc/sens_reg.h>
+#include <soc/syscon_reg.h>
 
-#include <inttypes.h>
 #include <stdint.h>
 
 #define ADC_ATTENUATION 3
@@ -42,13 +42,29 @@ __attribute__((always_inline)) inline static volatile uint32_t force_32b_read(ui
   return v32b & mask;
 }
 
+__attribute__((always_inline)) inline static void force_32b_set(uint32_t volatile* const restrict reg, uint32_t mask) {
+  volatile uint32_t v32b = *reg;
+  *reg = (v32b |= mask);
+}
+
+__attribute__((always_inline)) inline static void force_32b_clear(uint32_t volatile* const restrict reg, uint32_t mask) {
+  volatile uint32_t v32b = *reg;
+  *reg = (v32b &= ~mask);
+}
+
+__attribute__((always_inline)) inline static void force_32b_clear_and_set(uint32_t volatile* const restrict reg, uint32_t mask, uint32_t set_mask) {
+  volatile uint32_t v32b = *reg;
+  v32b &= ~mask;
+  *reg = (v32b |= set_mask);
+}
+
 __attribute__((always_inline)) inline static void dropin_adc1_config_width(void) {
   REG(SENS_SAR_START_FORCE_REG) |= SENS_SAR1_BIT_WIDTH_M; // 0x3 => full 12 bits
   REG(SENS_SAR_READ_CTRL_REG) |= SENS_SAR1_SAMPLE_BIT_M;  // ditto ^
 }
 
-__attribute__((always_inline)) inline static void dropin_adc_set_clk_div(uint8_t d) {
-  ESP_ERROR_CHECK(adc_set_clk_div(d));
+__attribute__((always_inline)) inline static void dropin_adc_set_clk_div(void) {
+  force_32b_clear_and_set(SYSCON_SARADC_CTRL_REG, SYSCON_SARADC_SAR_CLK_DIV_M, (ADC_CLK_DIV << SYSCON_SARADC_SAR_CLK_DIV_S));
 }
 
 __attribute__((always_inline)) inline static void dropin_rtc_gpio_deinit(void) {
@@ -91,8 +107,34 @@ __attribute__((always_inline)) inline static void dropin_gpio_config(void) {
   dropin_gpio_hal_iomux_func_sel();
 }
 
+__attribute__((always_inline)) inline static void dropin_rtc_gpio_init(void) { rtc_gpio_init(ADC_PIN); }
+__attribute__((always_inline)) inline static void dropin_rtc_gpio_set_direction(void) { rtc_gpio_set_direction(ADC_PIN, RTC_GPIO_MODE_DISABLED); }
+__attribute__((always_inline)) inline static void dropin_rtc_gpio_pulldown_dis(void) { rtc_gpio_pulldown_dis(ADC_PIN); }
+__attribute__((always_inline)) inline static void dropin_rtc_gpio_pullup_dis(void) { rtc_gpio_pullup_dis(ADC_PIN); }
+
 __attribute__((always_inline)) inline static void dropin_adc1_config_channel_atten(void) {
-  ESP_ERROR_CHECK(adc1_config_channel_atten(PASTE(PASTE(ADC1_GPIO, ADC_PIN), _CHANNEL), ADC_ATTENUATION));
+  // ESP_ERROR_CHECK(adc1_config_channel_atten(ADC_CHANNEL, ADC_ATTENUATION));
+
+  // adc_common_gpio_init(ADC_UNIT_1, ADC_CHANNEL);
+  dropin_rtc_gpio_init();
+  dropin_rtc_gpio_set_direction();
+  dropin_rtc_gpio_pulldown_dis();
+  dropin_rtc_gpio_pullup_dis();
+
+  // adc_rtc_chan_init(ADC_UNIT_1);
+  /* Workaround: Disable the synchronization operation function of ADC1 and DAC.
+     If enabled(default), ADC RTC controller sampling will cause the DAC channel output voltage. */
+#if SOC_DAC_SUPPORTED
+  dac_ll_rtc_sync_by_adc(false);
+#endif
+  adc_oneshot_ll_output_invert(ADC_UNIT_1, ADC_LL_DATA_INVERT_DEFAULT(ADC_UNIT_1));
+  adc_ll_set_sar_clk_div(ADC_UNIT_1, ADC_LL_SAR_CLK_DIV_DEFAULT(ADC_UNIT_1));
+#ifdef CONFIG_IDF_TARGET_ESP32
+  adc_ll_hall_disable(); // Disable other peripherals.
+  adc_ll_amp_disable();  // Currently the LNA is not open, close it by default.
+#endif
+
+  adc_oneshot_ll_set_atten(ADC_UNIT_1, ADC_CHANNEL, ADC_ATTENUATION);
 }
 
 __attribute__((always_inline)) inline static uint16_t dropin_adc1_get_raw(void) {
