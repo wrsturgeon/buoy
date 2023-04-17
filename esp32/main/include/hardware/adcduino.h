@@ -125,7 +125,7 @@ __attribute__((always_inline)) inline static void dropin_adc1_config_channel_att
   /* Workaround: Disable the synchronization operation function of ADC1 and DAC.
      If enabled(default), ADC RTC controller sampling will cause the DAC channel output voltage. */
   REG(SENS_SAR_MEAS_CTRL2_REG) &= ~SENS_SAR1_DAC_XPD_FSM_M; // Decouple DAC from ADC
-  adc_oneshot_ll_output_invert(ADC_UNIT_1, ADC_LL_DATA_INVERT_DEFAULT(ADC_UNIT_1));
+  REG(SENS_SAR_READ_CTRL_REG) |= SENS_SAR1_DATA_INV_M;      // Invert data
   adc_ll_set_sar_clk_div(ADC_UNIT_1, ADC_LL_SAR_CLK_DIV_DEFAULT(ADC_UNIT_1));
 #ifdef CONFIG_IDF_TARGET_ESP32
   adc_ll_hall_disable(); // Disable other peripherals.
