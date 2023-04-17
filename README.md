@@ -1,8 +1,6 @@
 # The _Heart_-Throbs ❤️
 ## UPenn ESE 350 Final Project
 
-&nbsp;
-
 ### Instructions
 Just run `make`. (This should install dependencies as well).
 
