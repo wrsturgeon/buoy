@@ -4,7 +4,6 @@
 #include "stringify.h"
 
 #include <driver/rtc_io.h>
-#include <hal/adc_ll.h>
 
 #include <soc/adc_channel.h>
 #include <soc/gpio_reg.h>
