@@ -3,8 +3,6 @@
 
 #include "stringify.h"
 
-#include <driver/rtc_io.h>
-
 #include <soc/adc_channel.h>
 #include <soc/gpio_reg.h>
 #include <soc/io_mux_reg.h>
@@ -118,9 +116,9 @@ __attribute__((always_inline)) inline static void dropin_rtc_gpio_set_direction(
   REG(rtc_io_desc[RTC_IO_CHANNEL].reg) &= ~rtc_io_desc[RTC_IO_CHANNEL].ie;
 }
 
-__attribute__((always_inline)) inline static void dropin_rtc_gpio_pulldown_dis(void) { rtc_gpio_pulldown_dis(ADC_PIN); }
+__attribute__((always_inline)) inline static void dropin_rtc_gpio_pulldown_dis(void) { REG(rtc_io_desc[RTC_IO_CHANNEL].reg) &= ~rtc_io_desc[RTC_IO_CHANNEL].pulldown; }
 
-__attribute__((always_inline)) inline static void dropin_rtc_gpio_pullup_dis(void) { rtc_gpio_pullup_dis(ADC_PIN); }
+__attribute__((always_inline)) inline static void dropin_rtc_gpio_pullup_dis(void) { REG(rtc_io_desc[RTC_IO_CHANNEL].reg) &= ~rtc_io_desc[RTC_IO_CHANNEL].pullup; }
 
 __attribute__((always_inline)) inline static void dropin_adc_ll_hall_disable(void) { REG(RTC_IO_HALL_SENS_REG) &= ~RTC_IO_XPD_HALL_M; }
 
