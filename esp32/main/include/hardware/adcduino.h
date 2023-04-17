@@ -3,9 +3,7 @@
 
 #include "stringify.h"
 
-#include <../deprecated/adc1_private.h>
 #include <../deprecated/driver/adc.h>
-#include </Users/willsturgeon/esp/esp-idf/components/driver/deprecated/driver/adc.h>
 #include <driver/rtc_io.h>
 #include <esp_log.h>
 #include <hal/adc_ll.h>
@@ -98,7 +96,6 @@ __attribute__((always_inline)) inline static void dropin_adc1_config_channel_att
 }
 
 __attribute__((always_inline)) inline static uint16_t dropin_adc1_get_raw(void) {
-  // adc1_rtc_mode_acquire();
 
   adc_ll_hall_disable();                              // Disable other peripherals.
   adc_ll_amp_disable();                               // Currently the LNA is not open, close it by default.
@@ -113,11 +110,10 @@ __attribute__((always_inline)) inline static uint16_t dropin_adc1_get_raw(void) 
   REG(SENS_SAR_MEAS_START1_REG) |= SENS_MEAS1_START_SAR_M;
 
   do {
-  } while (adc_oneshot_ll_get_event(ADC_LL_EVENT_ADC1_ONESHOT_DONE) != true);
-  uint16_t adc_value = adc_oneshot_ll_get_raw_result(ADC_UNIT_1);
-  adc_oneshot_ll_disable_all_unit();
+  } while (!(REG(SENS_SAR_MEAS_START1_REG) & SENS_MEAS1_DONE_SAR_M));
 
-  // adc1_lock_release();
+  uint16_t adc_value = adc_oneshot_ll_get_raw_result(ADC_UNIT_1);
+
   return adc_value;
 }
 
