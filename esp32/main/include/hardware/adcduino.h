@@ -5,7 +5,6 @@
 
 #include <driver/rtc_io.h>
 #include <hal/adc_ll.h>
-#include <hal/dac_ll.h>
 
 #include <soc/adc_channel.h>
 #include <soc/gpio_reg.h>
@@ -19,7 +18,8 @@
 #include <stdint.h>
 
 #define ADC_ATTENUATION 3
-#define ADC_CLK_DIV ADC_LL_SAR_CLK_DIV_DEFAULT(ADC_UNIT_1) // 2
+_Static_assert((ADC_ATTENUATION & 3U) == ADC_ATTENUATION);
+#define ADC_CLK_DIV 2
 #define ADC_BIT_WIDTH 12
 #define ADC_PIN 36
 #define ADC_CHANNEL PASTE(PASTE(ADC1_GPIO, ADC_PIN), _CHANNEL)
@@ -122,12 +122,12 @@ __attribute__((always_inline)) inline static void dropin_adc1_config_channel_att
   REG(SENS_SAR_MEAS_CTRL2_REG) &= ~SENS_SAR1_DAC_XPD_FSM_M; // Decouple DAC from ADC
   REG(SENS_SAR_READ_CTRL_REG) |= SENS_SAR1_DATA_INV_M;      // Invert data
   force_32b_clear_and_set(SENS_SAR_READ_CTRL_REG, SENS_SAR1_CLK_DIV_M, (ADC_CLK_DIV << SENS_SAR1_CLK_DIV_S));
-#ifdef CONFIG_IDF_TARGET_ESP32
   adc_ll_hall_disable(); // Disable other peripherals.
   adc_ll_amp_disable();  // Currently the LNA is not open, close it by default.
-#endif
 
-  adc_oneshot_ll_set_atten(ADC_UNIT_1, ADC_CHANNEL, ADC_ATTENUATION);
+  // adc_oneshot_ll_set_atten(ADC_UNIT_1, ADC_CHANNEL, ADC_ATTENUATION);
+  REG(SENS_SAR_ATTEN1_REG) &= ~(3U << (ADC_CHANNEL << 1U));
+  REG(SENS_SAR_ATTEN1_REG) |= (ADC_ATTENUATION << (ADC_CHANNEL << 1U));
 }
 
 __attribute__((always_inline)) inline static uint16_t dropin_adc1_get_raw(void) {
