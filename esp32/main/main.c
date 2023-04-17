@@ -1,11 +1,12 @@
 #define NDEBUG 1
 
 //%%%%%%%%%%%%%%%% CONFIGURABLE PARAMETERS:
-#define CYCLES_PER_SECOND 1ULL
+#define LOG2_CYCLES_PER_SECOND 1U
 #define LOG2_ADC_SAMPLES 0U // Set <= 4 so we use at most (2^4=)16 12-bit numbers and a 16-bit sum is juuuuust guaranteed not to overflow
 #define LOG2_HEARTBEAT_SAMPLES 4U
 //%%%%%%%%%%%%%%%% END CONFIGURABLE PARAMETERS
 
+#define N_CYCLES_PER_SECOND (1ULL << LOG2_CYCLES_PER_SECOND)
 #define N_ADC_SAMPLES (1ULL << LOG2_ADC_SAMPLES)
 #define N_HEARTBEAT_SAMPLES (1ULL << LOG2_HEARTBEAT_SAMPLES)
 #define MASK_ADC_FULL (N_ADC_SAMPLES - 1U)
@@ -16,8 +17,8 @@
 // So raw output >> 8 -> seconds
 // The ESP32 timer runs at 80MHz before prescaling
 // So with N samples in a cycle (over which we average out random fluctuations),
-// we need to prescale by 80,000,000 / (CYCLES_PER_SECOND * N)
-#define PRESCALE_DENOMINATOR ((CYCLES_PER_SECOND) * (N_ADC_SAMPLES))
+// we need to prescale by 80,000,000 / (N_CYCLES_PER_SECOND * N)
+#define PRESCALE_DENOMINATOR ((N_CYCLES_PER_SECOND) * (N_ADC_SAMPLES))
 #define HALF_DENOMINATOR ((PRESCALE_DENOMINATOR + 1ULL) >> 1U)
 #define PRESCALE_WHOLE_ENCHILADA ((80000000ULL + HALF_DENOMINATOR) / (PRESCALE_DENOMINATOR)) // Add half the denominator so we round up
 
@@ -51,22 +52,25 @@ static prescale_overflow_t prescale_overflow_next = PRESCALE_OVERFLOW_PERIOD;
 #include "graphics.h"
 #include "hardware/adc.h"
 #include "hardware/timing.h"
-#include "hardware/watchdog.h"
 #include "sane-assert.h"
+
+// Include just enough FreeRTOS to feed the watchdog timer
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 static uint16_t adc_sample_vector[N_ADC_SAMPLES];
 static uint16_t heartbeat_sample_vector[N_HEARTBEAT_SAMPLES];
-static uint32_t next_tick = 0;
+static uint32_t this_tick = -1;
 static uint8_t heartbeat_index; // Initial position doesn't matter since it's cyclic
 
-__attribute__((always_inline)) uint16_t time_between_beats(uint32_t now) {
+__attribute__((always_inline)) inline static uint16_t time_between_beats(uint32_t const now) {
   static uint32_t last; // Initial value doesn't matter (wrong whatever it is and gone in a few seconds)
   uint32_t const lastlast = last;
   return (last = now) - lastlast;
 }
 
 __attribute__((always_inline)) inline static uint16_t adc_mean(void) {
-  SANE_ASSERT(!(next_tick & MASK_ADC_FULL)); // We shouldn't be computing the mean halfway through a cycle
+  SANE_ASSERT(!(this_tick & MASK_ADC_FULL)); // We shouldn't be computing the mean halfway through a cycle
 
   uint16_t sum = 0;
 
@@ -86,18 +90,13 @@ __attribute__((always_inline)) inline static uint16_t heartbeat_mean(void) {
 }
 
 __attribute__((always_inline)) inline static void once_every_tick(void) {
-  adc_sample_vector[
-#if PRESCALE_OVERFLOW
-      prescale_overflow
-#else  // PRESCALE_OVERFLOW
-      next_tick
-#endif // PRESCALE_OVERFLOW
-      & MASK_ADC_FULL] = adc_poll();
+  static uint8_t index;
+  adc_sample_vector[MASK_ADC_FULL & ++index] = adc_poll();
 }
 
-__attribute__((always_inline)) inline static void once_every_cycle(uint32_t now) {
+__attribute__((always_inline)) inline static void once_every_cycle(void) {
   if (display_and_check_heartbeat(adc_mean())) {
-    heartbeat_sample_vector[heartbeat_index] = time_between_beats(now);
+    heartbeat_sample_vector[heartbeat_index] = time_between_beats(this_tick);
     if (N_HEARTBEAT_SAMPLES == ++heartbeat_index) { heartbeat_index = 0; }
     // uint16_t mean;
     // {
@@ -115,11 +114,8 @@ __attribute__((always_inline)) inline static void once_every_cycle(uint32_t now)
   }
 }
 
-//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% FreeRTOS entry point instead of `main`, but using none of FreeRTOS's other features.
+//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% FreeRTOS task instead of `main` (so we can feed the watchdog), but using no other FreeRTOS features.
 void app_main(void) {
-
-  rtc_wdt_protect_off();
-  rtc_wdt_disable();
 
   // Initialize modules
   graphics_init();
@@ -128,27 +124,27 @@ void app_main(void) {
 
   // Main loop
   do {
-    uint32_t now = timing_get_clock_32b();
-    // SANE_ASSERT((now - next_tick) < 16U); // subtraction into a signed integer so we don't always fail straddling overflow
 
     // TODO: timer interrupts (will also fix ADC sampling bias!)
-    if (now < ++next_tick) {
-      feed_watchdog();
+    while (timing_get_clock_32b() < ++this_tick) {
       // printf("Ahead of schedule\r\n");
+
+      vTaskDelay(1); // Reset the watchdog so it doesn't fucking kill us every two seconds
+      // (but let it kill us if we're very behind schedule and we never satisfy the condition above)
+
       do { // twiddle our thumbs
-      } while ((now = timing_get_clock_32b()) < next_tick);
+      } while (timing_get_clock_32b() < this_tick);
     }
 
-#if PRESCALE_OVERFLOW
-    if (prescale_overflow_next == ++prescale_overflow) {
-      prescale_overflow_next += PRESCALE_OVERFLOW_PERIOD;
-#endif // PRESCALE_OVERFLOW
-
-      once_every_tick();
-      if (!(MASK_ADC_FULL & next_tick)) { once_every_cycle(now); }
+    // SANE_ASSERT((now - this_tick) < 16U); // subtraction into a signed integer so we don't always fail straddling overflow
 
 #if PRESCALE_OVERFLOW
-    }
+    if (prescale_overflow_next != ++prescale_overflow) { continue; }
+    prescale_overflow_next += PRESCALE_OVERFLOW_PERIOD;
 #endif // PRESCALE_OVERFLOW
+
+    once_every_tick();
+    if (!(MASK_ADC_FULL & this_tick)) { once_every_cycle(); }
+
   } while (1);
 }

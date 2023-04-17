@@ -138,7 +138,7 @@ static uint8_t display_and_check_heartbeat(uint16_t v) {
   return 0;
 }
 
-static void update_bpm(uint16_t /* just in a hell of a case */ bpm) {
+static void update_bpm(uint16_t /* just in a hell of a case (>255) */ bpm) {
   lcd_block(HZMAX - PADDING - BIGASCII_H + 1, PADDING + BIGASCII_W, HZMAX - PADDING, PADDING + 4 * (BIGASCII_W + 1) - 1, BACKGROUND);
   if (bpm < 1000) {
     if (bpm < 100) {

@@ -27,23 +27,23 @@ static uint8_t ADC_READY = 0;
 extern rtc_io_desc_t const rtc_io_desc[SOC_RTCIO_PIN_COUNT];
 
 // not sure why, but some registers require 32-bit atomic access
-__attribute__((always_inline)) inline static volatile uint32_t force_32b_read(uint32_t const volatile* const restrict reg, uint32_t mask) {
-  volatile uint32_t v32b = *reg;
+__attribute__((always_inline)) inline static uint32_t force_32b_read(uint32_t const volatile* const restrict reg, uint32_t mask) {
+  uint32_t volatile v32b = *reg;
   return v32b & mask;
 }
 
 __attribute__((always_inline)) inline static void force_32b_set(uint32_t volatile* const restrict reg, uint32_t mask) {
-  volatile uint32_t v32b = *reg;
+  uint32_t volatile v32b = *reg;
   *reg = (v32b |= mask);
 }
 
 __attribute__((always_inline)) inline static void force_32b_clear(uint32_t volatile* const restrict reg, uint32_t mask) {
-  volatile uint32_t v32b = *reg;
+  uint32_t volatile v32b = *reg;
   *reg = (v32b &= ~mask);
 }
 
 __attribute__((always_inline)) inline static void force_32b_clear_and_set(uint32_t volatile* const restrict reg, uint32_t mask, uint32_t set_mask) {
-  volatile uint32_t v32b = *reg;
+  uint32_t volatile v32b = *reg;
   v32b &= ~mask;
   *reg = (v32b |= set_mask);
 }
@@ -54,7 +54,7 @@ __attribute__((always_inline)) inline static void adc_set_bit_width(void) {
 }
 
 __attribute__((always_inline)) inline static void adc_prescale(void) {
-  force_32b_clear_and_set(SYSCON_SARADC_CTRL_REG, SYSCON_SARADC_SAR_CLK_DIV_M, (ADC_CLK_DIV << SYSCON_SARADC_SAR_CLK_DIV_S));
+  force_32b_clear_and_set(REG_PTR(SYSCON_SARADC_CTRL_REG), SYSCON_SARADC_SAR_CLK_DIV_M, (ADC_CLK_DIV << SYSCON_SARADC_SAR_CLK_DIV_S));
 }
 
 __attribute__((always_inline)) inline static void adc_rtc_disable_gpio(void) {
@@ -104,9 +104,9 @@ __attribute__((always_inline)) inline static void adc_disable_amp(void) {
   REG(SENS_SAR_MEAS_WAIT2_REG) &= ~SENS_FORCE_XPD_AMP_M;
   REG(SENS_SAR_MEAS_WAIT2_REG) |= (SENS_FORCE_XPD_AMP_PD << SENS_FORCE_XPD_AMP_S);
   REG(SENS_SAR_MEAS_CTRL_REG) &= ~(SENS_AMP_RST_FB_FSM_M | SENS_AMP_SHORT_REF_FSM_M | SENS_AMP_SHORT_REF_GND_FSM_M);
-  force_32b_clear_and_set(SENS_SAR_MEAS_WAIT1_REG, SENS_SAR_AMP_WAIT1_M, 1ULL << SENS_SAR_AMP_WAIT1_S);
-  force_32b_clear_and_set(SENS_SAR_MEAS_WAIT1_REG, SENS_SAR_AMP_WAIT2_M, 1ULL << SENS_SAR_AMP_WAIT2_S);
-  force_32b_clear_and_set(SENS_SAR_MEAS_WAIT2_REG, SENS_SAR_AMP_WAIT3_M, 1ULL << SENS_SAR_AMP_WAIT3_S);
+  force_32b_clear_and_set(REG_PTR(SENS_SAR_MEAS_WAIT1_REG), SENS_SAR_AMP_WAIT1_M, 1ULL << SENS_SAR_AMP_WAIT1_S);
+  force_32b_clear_and_set(REG_PTR(SENS_SAR_MEAS_WAIT1_REG), SENS_SAR_AMP_WAIT2_M, 1ULL << SENS_SAR_AMP_WAIT2_S);
+  force_32b_clear_and_set(REG_PTR(SENS_SAR_MEAS_WAIT2_REG), SENS_SAR_AMP_WAIT3_M, 1ULL << SENS_SAR_AMP_WAIT3_S);
 }
 
 __attribute__((always_inline)) inline static void adc_set_attenuation(void) {
@@ -114,7 +114,7 @@ __attribute__((always_inline)) inline static void adc_set_attenuation(void) {
 
   REG(SENS_SAR_MEAS_CTRL2_REG) &= ~SENS_SAR1_DAC_XPD_FSM_M; // Decouple DAC from ADC
   REG(SENS_SAR_READ_CTRL_REG) |= SENS_SAR1_DATA_INV_M;      // Invert data
-  force_32b_clear_and_set(SENS_SAR_READ_CTRL_REG, SENS_SAR1_CLK_DIV_M, (ADC_CLK_DIV << SENS_SAR1_CLK_DIV_S));
+  force_32b_clear_and_set(REG_PTR(SENS_SAR_READ_CTRL_REG), SENS_SAR1_CLK_DIV_M, (ADC_CLK_DIV << SENS_SAR1_CLK_DIV_S));
   adc_disable_hall_sensor();
   adc_disable_amp();
 
@@ -153,7 +153,7 @@ uint16_t adc_poll(void) {
   SANE_ASSERT(ADC_READY);
 
   do {
-  } while (force_32b_read(SENS_SAR_SLAVE_ADDR1_REG, SENS_MEAS_STATUS_M)); // This register is completely absent from the manual--not even its memory address :_)
+  } while (force_32b_read(REG_PTR(SENS_SAR_SLAVE_ADDR1_REG), SENS_MEAS_STATUS_M)); // This register is completely absent from the manual--not even its memory address :_)
 
   REG(SENS_SAR_MEAS_START1_REG) |= SENS_MEAS1_START_SAR_M;
 
@@ -162,7 +162,7 @@ uint16_t adc_poll(void) {
 
   // return adc_oneshot_ll_get_raw_result(ADC_UNIT_1);
   // ret_val = HAL_FORCE_READ_U32_REG_FIELD(SENS.sar_meas_start1, meas1_data_sar);
-  uint16_t adc_value = (force_32b_read(SENS_SAR_MEAS_START1_REG, SENS_MEAS1_DATA_SAR) >> SENS_MEAS1_DATA_SAR_S /* which happens to be 0 */);
+  uint16_t adc_value = (force_32b_read(REG_PTR(SENS_SAR_MEAS_START1_REG), SENS_MEAS1_DATA_SAR) >> SENS_MEAS1_DATA_SAR_S /* which happens to be 0 */);
 
   REG(SENS_SAR_MEAS_START1_REG) &= ~SENS_MEAS1_START_SAR_M;
 

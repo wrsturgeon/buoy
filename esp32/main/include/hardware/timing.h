@@ -42,7 +42,7 @@ __attribute__((always_inline)) inline static uint64_t timing_get_clock_64b(void)
   return ((((uint64_t)TIMG_REG(HI)) << 32U) | TIMG_REG(LO));
 }
 
-__attribute__((always_inline)) inline static uint64_t timing_get_clock_32b(void) {
+__attribute__((always_inline)) inline static uint32_t timing_get_clock_32b(void) {
   SANE_ASSERT(TIMING_READY);
   TIMG_REG(UPDATE) = ARBITRARY_VALUE;
   return TIMG_REG(LO);
