@@ -112,7 +112,11 @@ __attribute__((always_inline)) inline static void dropin_rtc_gpio_init(void) {
   REG(rtc_io_desc[RTC_IO_CHANNEL].reg) &= ~(RTC_IO_TOUCH_PAD1_FUN_SEL_V << rtc_io_desc[RTC_IO_CHANNEL].func);
 }
 
-__attribute__((always_inline)) inline static void dropin_rtc_gpio_set_direction(void) { rtc_gpio_set_direction(ADC_PIN, RTC_GPIO_MODE_DISABLED); }
+__attribute__((always_inline)) inline static void dropin_rtc_gpio_set_direction(void) {
+  REG(PASTE(PASTE(RTC_GPIO_PIN, RTC_IO_CHANNEL), _REG)) &= ~PASTE(PASTE(RTC_GPIO_PIN, RTC_IO_CHANNEL), _PAD_DRIVER_M);
+  REG(RTC_GPIO_ENABLE_REG) &= ~(1U << RTC_IO_CHANNEL);
+  REG(rtc_io_desc[RTC_IO_CHANNEL].reg) &= ~rtc_io_desc[RTC_IO_CHANNEL].ie;
+}
 
 __attribute__((always_inline)) inline static void dropin_rtc_gpio_pulldown_dis(void) { rtc_gpio_pulldown_dis(ADC_PIN); }
 
