@@ -98,19 +98,10 @@ __attribute__((always_inline)) inline static void dropin_adc1_config_channel_att
 }
 
 __attribute__((always_inline)) inline static uint16_t dropin_adc1_get_raw(void) {
-  int adc_value;
   adc1_rtc_mode_acquire();
 
-#if SOC_ADC_CALIBRATION_V1_SUPPORTED
-  adc_atten_t atten = adc_ll_get_atten(ADC_UNIT_1, ADC_CHANNEL);
-  adc_set_hw_calibration_code(ADC_UNIT_1, atten);
-#endif // SOC_ADC_CALIBRATION_V1_SUPPORTED
-
-  // SARADC1_ENTER();
-#ifdef CONFIG_IDF_TARGET_ESP32
-  adc_ll_hall_disable(); // Disable other peripherals.
-  adc_ll_amp_disable();  // Currently the LNA is not open, close it by default.
-#endif
+  adc_ll_hall_disable();                              // Disable other peripherals.
+  adc_ll_amp_disable();                               // Currently the LNA is not open, close it by default.
   adc_ll_set_controller(ADC_UNIT_1, ADC_LL_CTRL_RTC); // Set controller
   adc_oneshot_ll_set_channel(ADC_UNIT_1, ADC_CHANNEL);
 
@@ -118,15 +109,13 @@ __attribute__((always_inline)) inline static uint16_t dropin_adc1_get_raw(void) 
   REG(SENS_SAR_MEAS_START1_REG) |= (1 << (ADC_CHANNEL + SENS_SAR1_EN_PAD_S));
   do {
   } while (force_32b_read(SENS_SAR_SLAVE_ADDR1_REG, SENS_MEAS_STATUS_M)); // This register is completely absent from the manual--not even its memory address :_)
-  SENS.sar_meas_start1.meas1_start_sar = 0;
-  SENS.sar_meas_start1.meas1_start_sar = 1;
+  REG(SENS_SAR_MEAS_START1_REG) &= ~SENS_MEAS1_START_SAR_M;
+  REG(SENS_SAR_MEAS_START1_REG) |= SENS_MEAS1_START_SAR_M;
 
   do {
   } while (adc_oneshot_ll_get_event(ADC_LL_EVENT_ADC1_ONESHOT_DONE) != true);
-  adc_value = adc_oneshot_ll_get_raw_result(ADC_UNIT_1);
+  uint16_t adc_value = adc_oneshot_ll_get_raw_result(ADC_UNIT_1);
   adc_oneshot_ll_disable_all_unit();
-
-  // SARADC1_EXIT();
 
   adc1_lock_release();
   return adc_value;
