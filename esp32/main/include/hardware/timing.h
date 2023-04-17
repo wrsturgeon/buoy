@@ -36,10 +36,16 @@ __attribute__((always_inline)) inline static void timing_set_clock(uint64_t valu
   TIMG_REG(LOAD) = ARBITRARY_VALUE;
 }
 
-__attribute__((always_inline)) inline static uint64_t timing_get_clock(void) {
+__attribute__((always_inline)) inline static uint64_t timing_get_clock_64b(void) {
   SANE_ASSERT(TIMING_READY);
   TIMG_REG(UPDATE) = ARBITRARY_VALUE;
   return ((((uint64_t)TIMG_REG(HI)) << 32U) | TIMG_REG(LO));
+}
+
+__attribute__((always_inline)) inline static uint64_t timing_get_clock_32b(void) {
+  SANE_ASSERT(TIMING_READY);
+  TIMG_REG(UPDATE) = ARBITRARY_VALUE;
+  return TIMG_REG(LO);
 }
 
 __attribute__((always_inline)) inline static void timing_init(void) {
