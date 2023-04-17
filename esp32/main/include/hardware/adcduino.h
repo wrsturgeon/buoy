@@ -116,9 +116,9 @@ __attribute__((always_inline)) inline static uint16_t dropin_adc1_get_raw(void) 
   do {
   } while (!(REG(SENS_SAR_MEAS_START1_REG) & SENS_MEAS1_DONE_SAR_M));
 
-  uint16_t adc_value = adc_oneshot_ll_get_raw_result(ADC_UNIT_1);
-
-  return adc_value;
+  // return adc_oneshot_ll_get_raw_result(ADC_UNIT_1);
+  // ret_val = HAL_FORCE_READ_U32_REG_FIELD(SENS.sar_meas_start1, meas1_data_sar);
+  return (force_32b_read(SENS_SAR_MEAS_START1_REG, SENS_MEAS1_DATA_SAR) >> SENS_MEAS1_DATA_SAR_S /* which happens to be 0 */);
 }
 
 uint16_t FUCK(void) {
