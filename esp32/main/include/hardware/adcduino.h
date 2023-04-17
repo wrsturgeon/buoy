@@ -102,7 +102,9 @@ __attribute__((always_inline)) inline static uint16_t dropin_adc1_get_raw(void) 
   REG(SENS_SAR_READ_CTRL_REG) &= ~SENS_SAR1_DIG_FORCE_M;                                  // RTC control instead of digital
   REG(SENS_SAR_MEAS_START1_REG) |= (SENS_MEAS1_START_FORCE_M | SENS_SAR1_EN_PAD_FORCE_M); // Software control instead of ULP control
   REG(SENS_SAR_TOUCH_CTRL1_REG) |= (SENS_XPD_HALL_FORCE_M | SENS_HALL_PHASE_FORCE_M);     // Software control of Hall sensor as well (so we can shut it up)
-  adc_oneshot_ll_set_channel(ADC_UNIT_1, ADC_CHANNEL);
+  // adc_oneshot_ll_set_channel(ADC_UNIT_1, ADC_CHANNEL);
+  REG(SENS_SAR_MEAS_START1_REG) &= ~SENS_SAR1_EN_PAD_M;
+  REG(SENS_SAR_MEAS_START1_REG) |= (1ULL << (ADC_CHANNEL + SENS_SAR1_EN_PAD_S));
 
   REG(SENS_SAR_MEAS_START1_REG) &= ~SENS_SAR1_EN_PAD_M;
   REG(SENS_SAR_MEAS_START1_REG) |= (1ULL << (ADC_CHANNEL + SENS_SAR1_EN_PAD_S));
