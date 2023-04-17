@@ -2,6 +2,7 @@
 #define TIMING_H
 
 #include "hardware/reg.h"
+#include "sane-assert.h"
 #include "stringify.h"
 
 #include <esp_attr.h>
@@ -60,14 +61,14 @@ static DRAM_ATTR uint8_t TIMING_INTERRUPTS_RECEIVED = 0;
 #endif // NDEBUG
 
 __attribute__((always_inline)) inline static void timing_set_clock(uint64_t value) {
-  assert(!TIMING_READY); // Don't use this after setup! It'd fuck with the interrupt timing
+  SANE_ASSERT(!TIMING_READY); // Don't use this after setup! It'd fuck with the interrupt timing
   TIMG_REG(LOADHI) = (value >> 32U);
   TIMG_REG(LOADLO) = value;
   TIMG_REG(LOAD) = ARBITRARY_VALUE;
 }
 
 __attribute__((always_inline)) inline static uint64_t timing_get_clock(void) {
-  assert(TIMING_READY);
+  SANE_ASSERT(TIMING_READY);
   TIMG_REG(UPDATE) = ARBITRARY_VALUE;
   return ((((uint64_t)TIMG_REG(HI)) << 32U) | TIMG_REG(LO));
 }
@@ -84,7 +85,7 @@ __attribute__((always_inline)) inline static void timing_disable_alarm(void) {
 void IRAM_ATTR clock_interrupt(void*) {
   ++TIMING_INTERRUPTS_RECEIVED;
   ets_printf("ISR: #=%u\r\n", TIMING_INTERRUPTS_RECEIVED);
-  assert(TIMING_INTERRUPTS_RECEIVED); // overflow bad (in context)
+  SANE_ASSERT(TIMING_INTERRUPTS_RECEIVED); // overflow bad (in context)
 }
 
 static void timing_respond_to_interrupt(void) {
@@ -98,7 +99,7 @@ static void timing_respond_to_interrupt(void) {
 }
 
 __attribute__((always_inline)) inline static void timing_init(void) {
-  assert(!TIMING_READY);
+  SANE_ASSERT(!TIMING_READY);
 
   // Disable the clock to work on it
   // p. 499, $18.2.1

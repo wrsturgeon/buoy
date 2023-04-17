@@ -7,6 +7,8 @@
 // See p. 52 ("Direct I/O via IO_MUX") for our specific strategy, bypassing the recommended GPIO matrix.
 // p. 60 lists each GPIO individually.
 
+#include "sane-assert.h"
+
 #include <soc/io_mux_reg.h>
 
 #include <stdint.h>
@@ -28,21 +30,21 @@
 static uint8_t GPIO_ALREADY_ENABLED[N_GPIO >> 3U] = {0}; // each bit represents one pin
 #define GPIO_MARK_ENABLED(...)                                                 \
   do {                                                                         \
-    assert(((uint32_t)(__VA_ARGS__)) == (__VA_ARGS__));                        \
-    assert((__VA_ARGS__) < N_GPIO);                                            \
+    SANE_ASSERT(((uint32_t)(__VA_ARGS__)) == (__VA_ARGS__));                   \
+    SANE_ASSERT((__VA_ARGS__) < N_GPIO);                                       \
     GPIO_ALREADY_ENABLED[(__VA_ARGS__) >> 3U] |= (1ULL << ((__VA_ARGS__)&7U)); \
   } while (0)
 #define GPIO_MARK_DISABLED(...)                                                 \
   do {                                                                          \
-    assert(((uint32_t)(__VA_ARGS__)) == (__VA_ARGS__));                         \
-    assert((__VA_ARGS__) < N_GPIO);                                             \
+    SANE_ASSERT(((uint32_t)(__VA_ARGS__)) == (__VA_ARGS__));                    \
+    SANE_ASSERT((__VA_ARGS__) < N_GPIO);                                        \
     GPIO_ALREADY_ENABLED[(__VA_ARGS__) >> 3U] &= ~(1ULL << ((__VA_ARGS__)&7U)); \
   } while (0)
-#define GPIO_CHECK_ENABLED(...)                                                       \
-  do {                                                                                \
-    _Static_assert(((uint32_t)(__VA_ARGS__)) == (__VA_ARGS__), "GPIO pin > 65536?!"); \
-    _Static_assert((__VA_ARGS__) < N_GPIO, "GPIO pin > N_GPIO");                      \
-    assert(GPIO_ALREADY_ENABLED[(__VA_ARGS__) >> 3U] & (1ULL << ((__VA_ARGS__)&7U))); \
+#define GPIO_CHECK_ENABLED(...)                                                            \
+  do {                                                                                     \
+    _Static_assert(((uint32_t)(__VA_ARGS__)) == (__VA_ARGS__), "GPIO pin > 65536?!");      \
+    _Static_assert((__VA_ARGS__) < N_GPIO, "GPIO pin > N_GPIO");                           \
+    SANE_ASSERT(GPIO_ALREADY_ENABLED[(__VA_ARGS__) >> 3U] & (1ULL << ((__VA_ARGS__)&7U))); \
   } while (0)
 #else // NDEBUG
 #define GPIO_MARK_ENABLED(...)

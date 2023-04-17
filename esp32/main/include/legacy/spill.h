@@ -7,10 +7,10 @@
 
 #include "hardware/gpio.h"
 #include "hardware/reg.h"
+#include "sane-assert.h"
 
 #include <soc/spi_reg.h>
 
-#include <assert.h>
 #include <stdio.h>
 
 #define SPIN 2 // HSPI
@@ -102,7 +102,7 @@ __attribute__((always_inline)) inline static void spill_finish_setup(void) {
 }
 
 __attribute__((always_inline)) inline static void spill_setup(void) {
-  assert(!SPILL_IS_SET_UP);
+  SANE_ASSERT(!SPILL_IS_SET_UP);
   spill_set_mode();
   spill_finish_setup();
   GPIO_ENABLE_OUTPUT(SPI(CS));
@@ -111,9 +111,10 @@ __attribute__((always_inline)) inline static void spill_setup(void) {
 }
 
 __attribute__((always_inline)) inline static void spill_open(void) {
-  assert(SPILL_IS_SET_UP);
-  assert(!SPILL_IS_OPEN);
-  assert(GPIO_POLL_V(SPI(CS)));
+  SANE_ASSERT(SPILL_IS_SET_UP);
+  SANE_ASSERT(!SPILL_IS_OPEN);
+  ASSERT_GPIO_POLL_V(SPI(CS))
+  ();
 
   GPIO_PULL_LO(SPI(CS));
 
@@ -121,8 +122,8 @@ __attribute__((always_inline)) inline static void spill_open(void) {
 }
 
 __attribute__((always_inline)) inline static void spill_close(void) {
-  assert(SPILL_IS_OPEN);
-  assert(!GPIO_POLL_V(SPI(CS)));
+  SANE_ASSERT(SPILL_IS_OPEN);
+  SANE_ASSERT(!GPIO_POLL_V(SPI(CS)));
 
   GPIO_PULL_HI(SPI(CS));
 
@@ -132,7 +133,7 @@ __attribute__((always_inline)) inline static void spill_close(void) {
 // Manual p. 122 (Four-line half-duplex comm.)
 #define SPILL_SAFE_COMMAND(CMD, NBYTE, DELAY, ...)                                                       \
   do {                                                                                                   \
-    assert(SPILL_IS_OPEN);                                                                               \
+    SANE_ASSERT(SPILL_IS_OPEN);                                                                          \
     REG(SPI_USER_REG(SPIN)) |= SPI_USR_COMMAND_M;                                                        \
     REG(SPI_USER2_REG(SPIN)) &= ~(SPI_USR_COMMAND_BITLEN_M | SPI_USR_COMMAND_VALUE_M);                   \
     REG(SPI_USER2_REG(SPIN)) |= ((7U << SPI_USR_COMMAND_BITLEN_S) | ((CMD) << SPI_USR_COMMAND_VALUE_S)); \
@@ -158,7 +159,7 @@ __attribute__((always_inline)) inline static void spill_print_state(void) { prin
 
 // Manual p. 118
 __attribute__((always_inline)) inline static void spill_send_8b_data(uint8_t msg) {
-  assert(SPILL_IS_OPEN);
+  SANE_ASSERT(SPILL_IS_OPEN);
 
   REG(SPI_W0_REG(SPIN)) = msg;
 

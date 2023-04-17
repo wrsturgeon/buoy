@@ -1,6 +1,8 @@
 #ifndef ADCDUINO_H
 #define ADCDUINO_H
 
+#include "hardware/reg.h"
+#include "sane-assert.h"
 #include "stringify.h"
 
 #include <soc/adc_channel.h>
@@ -9,7 +11,7 @@
 #include <soc/sens_reg.h>
 #include <soc/syscon_reg.h>
 
-#define ADC_ATTENUATION 3
+#define ADC_ATTENUATION 0 // 3
 _Static_assert((ADC_ATTENUATION & 3U) == ADC_ATTENUATION);
 #define ADC_CLK_DIV 2
 #define ADC_BIT_WIDTH 12
@@ -18,7 +20,9 @@ _Static_assert((ADC_ATTENUATION & 3U) == ADC_ATTENUATION);
 #define ADC_IO_REG PASTE(PASTE(IO_MUX_GPIO, ADC_PIN), _REG)
 #define RTC_IO_CHANNEL PASTE(PASTE(RTCIO_GPIO, ADC_PIN), _CHANNEL)
 
+#ifndef NDEBUG
 static uint8_t ADC_READY = 0;
+#endif // NDEBUG
 
 extern rtc_io_desc_t const rtc_io_desc[SOC_RTCIO_PIN_COUNT];
 
@@ -119,31 +123,35 @@ __attribute__((always_inline)) inline static void adc_set_attenuation(void) {
   REG(SENS_SAR_ATTEN1_REG) |= (ADC_ATTENUATION << (ADC_CHANNEL << 1U));
 }
 
+__attribute__((always_inline)) inline static void adc_set_software_control(void) {
+  REG(SENS_SAR_READ_CTRL_REG) &= ~SENS_SAR1_DIG_FORCE_M;                                  // RTC control instead of digital
+  REG(SENS_SAR_MEAS_START1_REG) |= (SENS_MEAS1_START_FORCE_M | SENS_SAR1_EN_PAD_FORCE_M); // Software control instead of ULP control
+  REG(SENS_SAR_TOUCH_CTRL1_REG) |= (SENS_XPD_HALL_FORCE_M | SENS_HALL_PHASE_FORCE_M);     // Software control of Hall sensor as well (so we can shut it up)
+}
+
+__attribute__((always_inline)) inline static void adc_set_channel(void) {
+  REG(SENS_SAR_MEAS_START1_REG) &= ~SENS_SAR1_EN_PAD_M;
+  REG(SENS_SAR_MEAS_START1_REG) |= (1ULL << (ADC_CHANNEL + SENS_SAR1_EN_PAD_S));
+}
+
 __attribute__((always_inline)) inline static void adc_init(void) {
-  assert(!ADC_READY);
+  SANE_ASSERT(!ADC_READY);
 
   adc_set_bit_width();
   adc_prescale();
   adc_redirect_from_gpio();
   adc_set_attenuation();
+  adc_set_software_control();
+  adc_set_channel();
 
+#ifndef NDEBUG
   ADC_READY = 1;
+#endif // NDEBUG
 }
 
 uint16_t adc_poll(void) {
-  assert(ADC_READY);
+  SANE_ASSERT(ADC_READY);
 
-  adc_disable_hall_sensor();
-  adc_disable_amp();
-  REG(SENS_SAR_READ_CTRL_REG) &= ~SENS_SAR1_DIG_FORCE_M;                                  // RTC control instead of digital
-  REG(SENS_SAR_MEAS_START1_REG) |= (SENS_MEAS1_START_FORCE_M | SENS_SAR1_EN_PAD_FORCE_M); // Software control instead of ULP control
-  REG(SENS_SAR_TOUCH_CTRL1_REG) |= (SENS_XPD_HALL_FORCE_M | SENS_HALL_PHASE_FORCE_M);     // Software control of Hall sensor as well (so we can shut it up)
-  // adc_oneshot_ll_set_channel(ADC_UNIT_1, ADC_CHANNEL);
-  REG(SENS_SAR_MEAS_START1_REG) &= ~SENS_SAR1_EN_PAD_M;
-  REG(SENS_SAR_MEAS_START1_REG) |= (1ULL << (ADC_CHANNEL + SENS_SAR1_EN_PAD_S));
-
-  REG(SENS_SAR_MEAS_START1_REG) &= ~SENS_SAR1_EN_PAD_M;
-  REG(SENS_SAR_MEAS_START1_REG) |= (1ULL << (ADC_CHANNEL + SENS_SAR1_EN_PAD_S));
   do {
   } while (force_32b_read(SENS_SAR_SLAVE_ADDR1_REG, SENS_MEAS_STATUS_M)); // This register is completely absent from the manual--not even its memory address :_)
 

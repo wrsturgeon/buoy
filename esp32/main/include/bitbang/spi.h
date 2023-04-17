@@ -3,6 +3,7 @@
 
 #include "hardware/gpio.h"
 #include "pins.h"
+#include "sane-assert.h"
 
 #include <rom/ets_sys.h>
 
@@ -18,8 +19,7 @@
 #ifdef PLAY_IT_SAFE
 #define POSTCMD_DELAY(...) ets_delay_us(__VA_ARGS__);
 #else
-#define POSTCMD_DELAY(...) \
-  if ((__VA_ARGS__) >= 10) { ets_delay_us(__VA_ARGS__); } // Branch should be compile-time, but I'm not sure
+#define POSTCMD_DELAY(...)
 #endif
 
 #ifndef NDEBUG
@@ -28,7 +28,7 @@ static uint8_t SPI_IS_OPEN = 0;
 #endif // NDEBUG
 
 __attribute__((always_inline)) inline static void spi_init(void) {
-  assert(!SPI_READY);
+  SANE_ASSERT(!SPI_READY);
 
   GPIO_ENABLE_OUTPUT(PIN_TCS);
   GPIO_ENABLE_OUTPUT(PIN_MSI);
@@ -46,9 +46,9 @@ __attribute__((always_inline)) inline static void spi_init(void) {
 }
 
 __attribute__((always_inline)) inline static void spi_open(void) {
-  assert(SPI_READY);
-  assert(!SPI_IS_OPEN);
-  assert(!GPIO_GET(PIN_SCK));
+  SANE_ASSERT(SPI_READY);
+  SANE_ASSERT(!SPI_IS_OPEN);
+  SANE_ASSERT(!GPIO_GET(PIN_SCK));
   GPIO_PULL(PIN_TCS, LO);
 #ifndef NDEBUG
   SPI_IS_OPEN = 1;
@@ -56,8 +56,8 @@ __attribute__((always_inline)) inline static void spi_open(void) {
 }
 
 __attribute__((always_inline)) inline static void spi_close(void) {
-  assert(SPI_READY);
-  assert(SPI_IS_OPEN);
+  SANE_ASSERT(SPI_READY);
+  SANE_ASSERT(SPI_IS_OPEN);
   GPIO_PULL(PIN_TCS, HI);
 #ifndef NDEBUG
   SPI_IS_OPEN = 0;
@@ -65,12 +65,12 @@ __attribute__((always_inline)) inline static void spi_close(void) {
 }
 
 __attribute__((always_inline)) inline static void spi_send_bit(uint8_t bit) {
-  assert(!GPIO_GET(PIN_SCK));
+  SANE_ASSERT(!GPIO_GET(PIN_SCK));
   bit ? GPIO_PULL(PIN_MSI, HI) : GPIO_PULL(PIN_MSI, LO);
   GPIO_PULL(PIN_SCK, HI);
-  // Placing these `assert`s here should help even out the duty cycle
-  assert(SPI_IS_OPEN);
-  assert(!GPIO_GET(PIN_TCS));
+  // Placing these `SANE_ASSERT`s here should help even out the duty cycle
+  SANE_ASSERT(SPI_IS_OPEN);
+  SANE_ASSERT(!GPIO_GET(PIN_TCS));
   GPIO_PULL(PIN_SCK, LO);
 }
 
@@ -129,9 +129,9 @@ __attribute__((always_inline)) inline static void spi_send_16b(uint16_t msg) {
 #define SPI_COMMAND(CMD, ARGC, WAIT, ...) SPI_COMMAND_LITERAL(CMD, ARGC, WAIT, __VA_ARGS__)
 #define SPI_COMMAND_LITERAL(CMD, ARGC, WAIT, ...)  \
   do {                                             \
-    assert(SPI_IS_OPEN);                           \
-    assert(!GPIO_GET(PIN_TCS));                    \
-    assert(GPIO_GET(PIN_TDC));                     \
+    SANE_ASSERT(SPI_IS_OPEN);                      \
+    SANE_ASSERT(!GPIO_GET(PIN_TCS));               \
+    SANE_ASSERT(GPIO_GET(PIN_TDC));                \
     GPIO_PULL(PIN_TDC, LO); /* p. 27, first row */ \
     spi_send_8b(CMD);                              \
     GPIO_PULL(PIN_TDC, HI);                        \

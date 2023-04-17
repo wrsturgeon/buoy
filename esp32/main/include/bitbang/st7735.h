@@ -2,6 +2,7 @@
 // #define ST7735_H // actually redefined below as height lol
 
 #include "bitbang/spi.h"
+#include "sane-assert.h"
 
 #define A358_OK (0U)
 #define A358_MISC_ERROR (1U)
@@ -77,8 +78,8 @@ static uint8_t ST7735_READY = 0;
 #endif // NDEBUG
 
 __attribute__((always_inline)) inline static void st7735_init(void) {
-  assert(!SPI_READY);
-  assert(!ST7735_READY);
+  SANE_ASSERT(!SPI_READY);
+  SANE_ASSERT(!ST7735_READY);
 
   spi_init();
 

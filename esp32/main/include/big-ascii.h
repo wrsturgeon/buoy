@@ -32,7 +32,7 @@ IMPLFN(heart) {
     lcd_pixel(x - i, y + 4, color);
   }
   // y: +3
-  for (uint8_t i = 2; i != 9; ++i) {
+  for (uint8_t i = 3; i != 9; ++i) {
     lcd_pixel(x - i, y + 3, color);
   }
 }

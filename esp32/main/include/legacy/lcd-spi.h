@@ -5,8 +5,9 @@
 // https://www.adafruit.com/product/358
 // https://cdn-shop.adafruit.com/datasheets/ST7735R_V0.2.pdf
 
-#include "hardware/gpio.h"
+#include "gpio.h"
 #include "pins.h"
+#include "sane-assert.h"
 #include "spill.h"
 #include "st7735.h"
 
@@ -20,8 +21,8 @@ static uint8_t LCD_INITIALIZED = 0;
   do {                                                                                                             \
     _Static_assert((NBYTE) == (sizeof((uint8_t[]){__VA_ARGS__})));                                                 \
     _Static_assert((NBYTE) == (uint8_t)(NBYTE));                                                                   \
-    assert(LCD_INITIALIZED);                                                                                       \
-    assert(SPILL_IS_OPEN);                                                                                         \
+    SANE_ASSERT(LCD_INITIALIZED);                                                                                  \
+    SANE_ASSERT(SPILL_IS_OPEN);                                                                                    \
     GPIO_PULL_LO(LCD_DC); /* indicates an incoming command */                                                      \
     spill_send_8b(COMMAND);                                                                                        \
     GPIO_PULL_HI(LCD_DC); /* end of a command */                                                                   \
@@ -33,8 +34,8 @@ static uint8_t LCD_INITIALIZED = 0;
   } while (0)
 
 __attribute__((always_inline)) inline static void lcd_init(void) {
-  assert(!LCD_INITIALIZED);
-  assert(!SPILL_IS_SET_UP); // done below
+  SANE_ASSERT(!LCD_INITIALIZED);
+  SANE_ASSERT(!SPILL_IS_SET_UP); // done below
 #ifndef NDEBUG
   LCD_INITIALIZED = 1;
 #endif // NDEBUG
@@ -120,8 +121,8 @@ __attribute__((always_inline)) inline static void lcd_init(void) {
 
 #define LCD_TRUST_SET_ADDR(X0, Y0, X1, Y1)             \
   do {                                                 \
-    assert(LCD_INITIALIZED);                           \
-    assert(SPILL_IS_OPEN);                             \
+    SANE_ASSERT(LCD_INITIALIZED);                      \
+    SANE_ASSERT(SPILL_IS_OPEN);                        \
     SPILL_SAFE_COMMAND(CMD_CASET, 4, 0, 0, X0, 0, X1); \
     SPILL_SAFE_COMMAND(CMD_RASET, 4, 0, 0, Y0, 0, Y1); \
     SPILL_SAFE_COMMAND(CMD_RAMWR, 0, 5);               \

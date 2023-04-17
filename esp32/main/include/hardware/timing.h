@@ -1,7 +1,12 @@
 #ifndef TIMING_H
 #define TIMING_H
 
+#ifndef PRESCALE_BY
+#error Please #define PRESCALE_BY before including `hardware/timing.h`
+#endif // PRESCALE_BY
+
 #include "hardware/reg.h"
+#include "sane-assert.h"
 
 #include <soc/timer_group_reg.h>
 
@@ -10,7 +15,6 @@
 
 #define TIMG_N 0
 #define TIMER_N 0
-#define PRESCALE_BY 0
 #define ARBITRARY_VALUE 1 // for clarity of intention
 
 #define TIMG(...) TIMG_LITERAL(TIMER_N, __VA_ARGS__)
@@ -26,20 +30,20 @@ static uint8_t TIMING_READY = 0;
 #endif // NDEBUG
 
 __attribute__((always_inline)) inline static void timing_set_clock(uint64_t value) {
-  assert(!TIMING_READY); // Don't use this after setup! It'd fuck with the interrupt timing
+  SANE_ASSERT(!TIMING_READY); // Don't use this after setup! It'd fuck with the interrupt timing
   TIMG_REG(LOADHI) = (value >> 32U);
   TIMG_REG(LOADLO) = value;
   TIMG_REG(LOAD) = ARBITRARY_VALUE;
 }
 
 __attribute__((always_inline)) inline static uint64_t timing_get_clock(void) {
-  assert(TIMING_READY);
+  SANE_ASSERT(TIMING_READY);
   TIMG_REG(UPDATE) = ARBITRARY_VALUE;
   return ((((uint64_t)TIMG_REG(HI)) << 32U) | TIMG_REG(LO));
 }
 
 __attribute__((always_inline)) inline static void timing_init(void) {
-  assert(!TIMING_READY);
+  SANE_ASSERT(!TIMING_READY);
 
   // Disable the clock to work on it
   // p. 499, $18.2.1
@@ -49,12 +53,12 @@ __attribute__((always_inline)) inline static void timing_init(void) {
   TIMG_REG(CONFIG) |= (TIMG(INCREASE_M) | (PRESCALE_BY << TIMG(DIVIDER_S)));
   timing_set_clock(0);
 
-  // Re-enable the clock
-  TIMG_REG(CONFIG) |= TIMG(EN_M);
-
 #ifndef NDEBUG
   TIMING_READY = 1;
 #endif // NDEBUG
+
+  // Re-enable the clock
+  TIMG_REG(CONFIG) |= TIMG(EN_M);
 }
 
 #endif // TIMING_H

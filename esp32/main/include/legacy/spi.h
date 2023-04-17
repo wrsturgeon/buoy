@@ -6,6 +6,7 @@
 
 #include "hardware/gpio.h"
 #include "pins.h"
+#include "sane-assert.h"
 
 #include <driver/spi_master.h>
 #include <soc/spi_reg.h>
@@ -65,7 +66,7 @@ static spi_device_interface_config_t const SPI_DEVICE_CONFIG = {
 
 __attribute__((always_inline)) inline static void spi_init(void) {
 #ifndef NDEBUG
-  assert(!SPI_INITIALIZED);
+  SANE_ASSERT(!SPI_INITIALIZED);
   SPI_INITIALIZED = 1;
 #endif
 
@@ -113,7 +114,7 @@ __attribute__((always_inline)) inline static void spi_trust_send_8b(uint8_t cons
   // Arduino implementation:
   //    SPDR = stream;
   //    while (!(SPSR & (1U << SPIF)));
-  assert(SPI_COMM_OPEN);
+  SANE_ASSERT(SPI_COMM_OPEN);
 
   spi_transaction_t trans = {
       .length = 8, // bits
@@ -207,8 +208,8 @@ __attribute__((always_inline)) inline static void spi_trust_send_8b(uint8_t cons
   //   SPI_CHECK(handle != NULL, "invalid dev handle", ESP_ERR_INVALID_ARG);
   //   spi_host_t* host = handle->host;
 
-  //   assert(host->cur_cs == handle->id);
-  //   assert(handle == get_acquiring_dev(host));
+  //   SANE_ASSERT(host->cur_cs == handle->id);
+  //   SANE_ASSERTSSERT(handle == get_acquiring_dev(host));
 
   //   TickType_t start = xTaskGetTickCount();
   //   while (!spi_hal_usr_is_done(&host->hal)) {
@@ -229,7 +230,7 @@ __attribute__((always_inline)) inline static void spi_trust_send_8b(uint8_t cons
   //    * acquired the bus thanks to the function `spi_device_acquire_bus()`.
   //    * In that case, the lock must not be released now because . */
   //   if (host->device_acquiring_lock != handle) {
-  //     assert(host->device_acquiring_lock == NULL);
+  //     SANE_ASSERT(host->device_acquiring_lock == NULL);
   //     spi_bus_lock_acquire_end(handle->dev_lock);
   //   }
 

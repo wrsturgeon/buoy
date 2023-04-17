@@ -3,6 +3,7 @@
 
 #include "ascii.h"
 #include "lcd-spi.h"
+#include "sane-assert.h"
 
 #include <stdint.h>
 
@@ -16,8 +17,8 @@
 #define BLACK RGB565(0, 0, 0)
 
 __attribute__((always_inline)) inline static void lcd_pixel(uint8_t x, uint8_t y, uint16_t color) {
-  assert(LCD_INITIALIZED);
-  assert(!SPILL_IS_OPEN);
+  SANE_ASSERT(LCD_INITIALIZED);
+  SANE_ASSERT(!SPILL_IS_OPEN);
   spill_open();
   LCD_TRUST_SET_ADDR(x, y, x, y);
   spill_send_16b_data(color);
@@ -25,8 +26,8 @@ __attribute__((always_inline)) inline static void lcd_pixel(uint8_t x, uint8_t y
 }
 
 static void lcd_char(uint8_t x, uint8_t y, uint16_t character, uint16_t fColor, uint16_t bColor) {
-  assert(LCD_INITIALIZED);
-  assert(!SPILL_IS_OPEN);
+  SANE_ASSERT(LCD_INITIALIZED);
+  SANE_ASSERT(!SPILL_IS_OPEN);
   uint16_t row = character - 0x20; // Determine row of ASCII table starting at space
   unsigned i, j;
   for (i = 0; i < 5; i++) {
@@ -42,8 +43,8 @@ static void lcd_char(uint8_t x, uint8_t y, uint16_t character, uint16_t fColor, 
 }
 
 __attribute__((always_inline)) inline static void lcd_block(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint16_t color) {
-  assert(LCD_INITIALIZED);
-  assert(!SPILL_IS_OPEN);
+  SANE_ASSERT(LCD_INITIALIZED);
+  SANE_ASSERT(!SPILL_IS_OPEN);
   spill_open();
   LCD_TRUST_SET_ADDR(x0, y0, x1, y1);
   for (uint16_t ij = 0; ij != (uint16_t)(((uint16_t)(y1 - y0 + 1)) * (uint16_t)(x1 - x0 + 1)); ++ij) { spill_send_16b_data(color); }
@@ -97,8 +98,8 @@ static void circle_remainder_recursive(uint8_t x0, uint8_t y0, uint8_t x1, uint8
 }
 
 __attribute__((always_inline)) inline static void lcd_circle(uint8_t x0, uint8_t y0, uint8_t radius, uint16_t color) {
-  assert(LCD_INITIALIZED);
-  assert(!SPILL_IS_OPEN);
+  SANE_ASSERT(LCD_INITIALIZED);
+  SANE_ASSERT(!SPILL_IS_OPEN);
   // Draw the biggest rectangle you can, recursively, down to 1 pixel
   // sqrt(1/2)*256=181 so x*sqrt(1/2) ~= (x*181)>>8 without float mul
   uint8_t hsl /* half side-length */ = (uint16_t)(181 * (uint16_t)radius) >> 8;
@@ -109,8 +110,8 @@ __attribute__((always_inline)) inline static void lcd_circle(uint8_t x0, uint8_t
 }
 
 static void lcd_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t c) {
-  assert(LCD_INITIALIZED);
-  assert(!SPILL_IS_OPEN);
+  SANE_ASSERT(LCD_INITIALIZED);
+  SANE_ASSERT(!SPILL_IS_OPEN);
   int8_t flipx, flipy, incr, zncr;
   int16_t dx, dy, i, z, e = 0;
   int16_t const *i0, *i1, *px, *py, *di, *dz;
@@ -148,8 +149,8 @@ static void lcd_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t c)
 
 // Vertical line.
 __attribute__((always_inline)) inline static void lcd_look_to_the_cookie(uint8_t x0, uint8_t y0, uint8_t x1, uint16_t color1, uint16_t color2) {
-  assert(LCD_INITIALIZED);
-  assert(!SPILL_IS_OPEN);
+  SANE_ASSERT(LCD_INITIALIZED);
+  SANE_ASSERT(!SPILL_IS_OPEN);
   spill_open();
   LCD_TRUST_SET_ADDR(x0, y0, x1, y0 + 1);
   for (uint16_t ij = 0; ij != (uint16_t)(x1 - x0 + 1); ++ij) { spill_send_16b_data(color1); }
@@ -158,13 +159,13 @@ __attribute__((always_inline)) inline static void lcd_look_to_the_cookie(uint8_t
 }
 
 __attribute__((always_inline)) inline static void lcd_set_screen(uint16_t color) {
-  assert(LCD_INITIALIZED);
+  SANE_ASSERT(LCD_INITIALIZED);
   lcd_block(0, 0, 159, 127, color);
 }
 
 __attribute__((always_inline)) inline static void lcd_string(uint8_t x, uint8_t y, char const* str, uint16_t fg, uint16_t bg) {
-  assert(LCD_INITIALIZED);
-  assert(!SPILL_IS_OPEN);
+  SANE_ASSERT(LCD_INITIALIZED);
+  SANE_ASSERT(!SPILL_IS_OPEN);
   if (!str) { return; }
   char c;
   while ((c = (*(str++)))) {
