@@ -86,7 +86,10 @@ __attribute__((always_inline)) inline static void dropin_gpio_intr_disable(void)
 #endif
 }
 
-__attribute__((always_inline)) inline static void dropin_gpio_hal_iomux_func_sel(void) { gpio_hal_iomux_func_sel(ADC_IO_REG, PIN_FUNC_GPIO); }
+__attribute__((always_inline)) inline static void dropin_gpio_hal_iomux_func_sel(void) {
+  REG(ADC_IO_REG) &= ~MCU_SEL_M;
+  REG(ADC_IO_REG) |= (PIN_FUNC_GPIO << MCU_SEL_S);
+}
 
 __attribute__((always_inline)) inline static void dropin_gpio_config(void) {
   dropin_rtc_gpio_deinit();
