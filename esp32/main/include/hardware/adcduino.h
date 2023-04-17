@@ -107,10 +107,17 @@ __attribute__((always_inline)) inline static void dropin_gpio_config(void) {
   dropin_gpio_hal_iomux_func_sel();
 }
 
-__attribute__((always_inline)) inline static void dropin_rtc_gpio_init(void) { rtc_gpio_init(ADC_PIN); }
+__attribute__((always_inline)) inline static void dropin_rtc_gpio_init(void) {
+  REG(rtc_io_desc[RTC_IO_CHANNEL].reg) |= rtc_io_desc[RTC_IO_CHANNEL].mux;
+  REG(rtc_io_desc[RTC_IO_CHANNEL].reg) &= ~(RTC_IO_TOUCH_PAD1_FUN_SEL_V << rtc_io_desc[RTC_IO_CHANNEL].func);
+}
+
 __attribute__((always_inline)) inline static void dropin_rtc_gpio_set_direction(void) { rtc_gpio_set_direction(ADC_PIN, RTC_GPIO_MODE_DISABLED); }
+
 __attribute__((always_inline)) inline static void dropin_rtc_gpio_pulldown_dis(void) { rtc_gpio_pulldown_dis(ADC_PIN); }
+
 __attribute__((always_inline)) inline static void dropin_rtc_gpio_pullup_dis(void) { rtc_gpio_pullup_dis(ADC_PIN); }
+
 __attribute__((always_inline)) inline static void dropin_adc_ll_hall_disable(void) { REG(RTC_IO_HALL_SENS_REG) &= ~RTC_IO_XPD_HALL_M; }
 
 __attribute__((always_inline)) inline static void dropin_adc_ll_amp_disable(void) {
