@@ -2,8 +2,7 @@
 
 #include "bitbang/timing.h"
 #include "graphics.h"
-// #include "hardware/adc.h"
-#include "hardware/adcduino.h"
+#include "hardware/adc.h"
 
 #include <esp_chip_info.h>
 #include <esp_flash.h>
@@ -56,13 +55,13 @@ void app_main(void) {
 
   graphics_init();
 
-  //   adc_init();
+  adc_init();
 
   timing_init();
   uint64_t next_timer = 0;
   do {
     //     printf("t=%llu\r\n", timing_get_clock());
-    printf("%hu\r\n", FUCK());
+    printf("%hu\r\n", adc_poll());
     if (timing_get_clock() < next_timer) { printf("Waiting...\r\n"); }
     do {
     } while (timing_get_clock() < next_timer);

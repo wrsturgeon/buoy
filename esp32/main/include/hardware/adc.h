@@ -1,141 +1,164 @@
-#ifndef ADC_H
-#define ADC_H
+#ifndef ADCDUINO_H
+#define ADCDUINO_H
 
-// Manual p. 627
-// https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf
-
-#include "hardware/reg.h"
 #include "stringify.h"
 
 #include <soc/adc_channel.h>
-#include <soc/rtc_io_channel.h>
-#include <soc/rtc_io_reg.h>
+#include <soc/gpio_reg.h>
+#include <soc/rtc_io_periph.h>
 #include <soc/sens_reg.h>
-#include <sys/lock.h>
+#include <soc/syscon_reg.h>
 
-#define ADC_USING_FREERTOS 0
-#if ADC_USING_FREERTOS
-#include <freertos/FreeRTOS.h>
-#include <freertos/portmacro.h>
-#endif
-
-// Manual p. 639, not sure why they're this way
-#define ATTEN_0DB 0b00
-#define ATTEN_1DB 0b11
-#define ATTEN_3DB 0b01
-#define ATTEN_6DB 0b10
-
-// Configurable!
-#define ADC_UNIT_1IDX 1 // One-indexed, so ADC1 -> 1, ADC2 -> 2
-_Static_assert(ADC_UNIT_1IDX);
-#define ADC_UNIT_0IDX (ADC_UNIT_1IDX - 1) // Minus one! So ADC1 -> 0, ADC2 -> 1
-#define ADC_CHANNEL 0
-#define ADC_ATTEN 0
-#define SAR_PRESCALE 2
-
-#if ADC_UNIT_1IDX == 1
-#define ADC_CTRLREG REG(SENS_SAR_READ_CTRL_REG)
-#elif ADC_UNIT_1IDX == 2
-#define ADC_CTRLREG REG(SENS_SAR_READ_CTRL2_REG)
-#else
-#error "Unrecognized ADC unit (should be 1 or 2)"
-#endif
-
-#define ADC_PINN PASTE(PASTE(PASTE(PASTE(ADC, ADC_UNIT_1IDX), _CHANNEL_), ADC_CHANNEL), _GPIO_NUM) // e.g. ADC1_CHANNEL_0_GPIO_NUM, from <soc/adc_channel.h>
-#define RTC_CHANNEL PASTE(PASTE(RTCIO_GPIO, ADC_PINN), _CHANNEL)
+#define ADC_ATTENUATION 3
+_Static_assert((ADC_ATTENUATION & 3U) == ADC_ATTENUATION);
+#define ADC_CLK_DIV 2
+#define ADC_BIT_WIDTH 12
+#define ADC_PIN 36
+#define ADC_CHANNEL PASTE(PASTE(ADC1_GPIO, ADC_PIN), _CHANNEL)
+#define ADC_IO_REG PASTE(PASTE(IO_MUX_GPIO, ADC_PIN), _REG)
+#define RTC_IO_CHANNEL PASTE(PASTE(RTCIO_GPIO, ADC_PIN), _CHANNEL)
 
 static uint8_t ADC_READY = 0;
 
-#if ADC_USING_FREERTOS
-extern portMUX_TYPE rtc_spinlock; // Built in to the ESP32 link process, unfortunately
+extern rtc_io_desc_t const rtc_io_desc[SOC_RTCIO_PIN_COUNT];
+
+// not sure why, but some registers require 32-bit atomic access
+__attribute__((always_inline)) inline static volatile uint32_t force_32b_read(uint32_t const volatile* const restrict reg, uint32_t mask) {
+  volatile uint32_t v32b = *reg;
+  return v32b & mask;
+}
+
+__attribute__((always_inline)) inline static void force_32b_set(uint32_t volatile* const restrict reg, uint32_t mask) {
+  volatile uint32_t v32b = *reg;
+  *reg = (v32b |= mask);
+}
+
+__attribute__((always_inline)) inline static void force_32b_clear(uint32_t volatile* const restrict reg, uint32_t mask) {
+  volatile uint32_t v32b = *reg;
+  *reg = (v32b &= ~mask);
+}
+
+__attribute__((always_inline)) inline static void force_32b_clear_and_set(uint32_t volatile* const restrict reg, uint32_t mask, uint32_t set_mask) {
+  volatile uint32_t v32b = *reg;
+  v32b &= ~mask;
+  *reg = (v32b |= set_mask);
+}
+
+__attribute__((always_inline)) inline static void adc_set_bit_width(void) {
+  REG(SENS_SAR_START_FORCE_REG) |= SENS_SAR1_BIT_WIDTH_M; // 0x3 => full 12 bits
+  REG(SENS_SAR_READ_CTRL_REG) |= SENS_SAR1_SAMPLE_BIT_M;  // ditto ^
+}
+
+__attribute__((always_inline)) inline static void adc_prescale(void) {
+  force_32b_clear_and_set(SYSCON_SARADC_CTRL_REG, SYSCON_SARADC_SAR_CLK_DIV_M, (ADC_CLK_DIV << SYSCON_SARADC_SAR_CLK_DIV_S));
+}
+
+__attribute__((always_inline)) inline static void adc_rtc_disable_gpio(void) {
+  REG(rtc_io_desc[RTC_IO_CHANNEL].reg) &= ~rtc_io_desc[RTC_IO_CHANNEL].mux;
+}
+
+__attribute__((always_inline)) inline static void adc_disable_gpio_interrupt(void) {
+  REG(PASTE(PASTE(GPIO_PIN, ADC_PIN), _REG)) &= ~(PASTE(PASTE(GPIO_PIN, ADC_PIN), _INT_TYPE_M) | PASTE(PASTE(GPIO_PIN, ADC_PIN), _INT_ENA_M));
+#if (ADC_PIN < 32)
+  REG(GPIO_STATUS_W1TC_REG) = (1ULL << ADC_PIN);
+#else
+  REG(GPIO_STATUS1_W1TC_REG) = (1ULL << (ADC_PIN - 32U));
 #endif
+}
+
+__attribute__((always_inline)) inline static void adc_set_iomux_fn(void) {
+  REG(ADC_IO_REG) &= ~MCU_SEL_M;
+  REG(ADC_IO_REG) |= (PIN_FUNC_GPIO << MCU_SEL_S);
+}
+
+__attribute__((always_inline)) inline static void adc_redirect_from_gpio(void) {
+  adc_rtc_disable_gpio();
+  adc_disable_gpio_interrupt();
+  adc_set_iomux_fn();
+}
+
+__attribute__((always_inline)) inline static void adc_rtc_gpio_set_direction(void) {
+  REG(PASTE(PASTE(RTC_GPIO_PIN, RTC_IO_CHANNEL), _REG)) &= ~PASTE(PASTE(RTC_GPIO_PIN, RTC_IO_CHANNEL), _PAD_DRIVER_M);
+  REG(RTC_GPIO_ENABLE_REG) &= ~(1U << RTC_IO_CHANNEL);
+  REG(rtc_io_desc[RTC_IO_CHANNEL].reg) &= ~rtc_io_desc[RTC_IO_CHANNEL].ie;
+}
+
+__attribute__((always_inline)) inline static void adc_rtc_gpio_disable_pulldown(void) { REG(rtc_io_desc[RTC_IO_CHANNEL].reg) &= ~rtc_io_desc[RTC_IO_CHANNEL].pulldown; }
+__attribute__((always_inline)) inline static void adc_rtc_gpio_disable_pullup(void) { REG(rtc_io_desc[RTC_IO_CHANNEL].reg) &= ~rtc_io_desc[RTC_IO_CHANNEL].pullup; }
+
+__attribute__((always_inline)) inline static void adc_rtc_init_gpio(void) {
+  REG(rtc_io_desc[RTC_IO_CHANNEL].reg) |= rtc_io_desc[RTC_IO_CHANNEL].mux;
+  REG(rtc_io_desc[RTC_IO_CHANNEL].reg) &= ~(RTC_IO_TOUCH_PAD1_FUN_SEL_V << rtc_io_desc[RTC_IO_CHANNEL].func);
+  adc_rtc_gpio_set_direction();
+  adc_rtc_gpio_disable_pulldown();
+  adc_rtc_gpio_disable_pullup();
+}
+
+__attribute__((always_inline)) inline static void adc_disable_hall_sensor(void) { REG(RTC_IO_HALL_SENS_REG) &= ~RTC_IO_XPD_HALL_M; }
+
+__attribute__((always_inline)) inline static void adc_disable_amp(void) {
+  REG(SENS_SAR_MEAS_WAIT2_REG) &= ~SENS_FORCE_XPD_AMP_M;
+  REG(SENS_SAR_MEAS_WAIT2_REG) |= (SENS_FORCE_XPD_AMP_PD << SENS_FORCE_XPD_AMP_S);
+  REG(SENS_SAR_MEAS_CTRL_REG) &= ~(SENS_AMP_RST_FB_FSM_M | SENS_AMP_SHORT_REF_FSM_M | SENS_AMP_SHORT_REF_GND_FSM_M);
+  force_32b_clear_and_set(SENS_SAR_MEAS_WAIT1_REG, SENS_SAR_AMP_WAIT1_M, 1ULL << SENS_SAR_AMP_WAIT1_S);
+  force_32b_clear_and_set(SENS_SAR_MEAS_WAIT1_REG, SENS_SAR_AMP_WAIT2_M, 1ULL << SENS_SAR_AMP_WAIT2_S);
+  force_32b_clear_and_set(SENS_SAR_MEAS_WAIT2_REG, SENS_SAR_AMP_WAIT3_M, 1ULL << SENS_SAR_AMP_WAIT3_S);
+}
+
+__attribute__((always_inline)) inline static void adc_set_attenuation(void) {
+  adc_rtc_init_gpio();
+
+  REG(SENS_SAR_MEAS_CTRL2_REG) &= ~SENS_SAR1_DAC_XPD_FSM_M; // Decouple DAC from ADC
+  REG(SENS_SAR_READ_CTRL_REG) |= SENS_SAR1_DATA_INV_M;      // Invert data
+  force_32b_clear_and_set(SENS_SAR_READ_CTRL_REG, SENS_SAR1_CLK_DIV_M, (ADC_CLK_DIV << SENS_SAR1_CLK_DIV_S));
+  adc_disable_hall_sensor();
+  adc_disable_amp();
+
+  // adc_oneshot_ll_set_atten(ADC_UNIT_1, ADC_CHANNEL, ADC_ATTENUATION);
+  REG(SENS_SAR_ATTEN1_REG) &= ~(3U << (ADC_CHANNEL << 1U));
+  REG(SENS_SAR_ATTEN1_REG) |= (ADC_ATTENUATION << (ADC_CHANNEL << 1U));
+}
 
 __attribute__((always_inline)) inline static void adc_init(void) {
   assert(!ADC_READY);
-  // Most registers on p. 638 of the manual, but every line with a register below is documented inline
 
-#if ADC_USING_FREERTOS
-  vPortEnterCritical(&rtc_spinlock); // See note on `rtc_spinlock` declaration above
-#endif
-
-  REG(SENS_SAR_START_FORCE_REG) |= PASTE(PASTE(SENS_SAR, ADC_UNIT_1IDX), _BIT_WIDTH_M);                        // Both bits high: 12b signal
-  ADC_CTRLREG |= PASTE(PASTE(SENS_SAR, ADC_UNIT_1IDX), _SAMPLE_BIT_M);                                         // Ditto ^^^^^^^^: 12b signal
-  REG(RTC_IO_SENSOR_PADS_REG) |= RTC_IO_SENSE1_MUX_SEL_M;                                                      // p. 82: Route SENSE1 to RTC rather than DIG(ital)
-  REG(RTC_IO_SENSOR_PADS_REG) &= ~RTC_IO_SENSE1_FUN_SEL_M;                                                     // p. 82: RTC IO_MUX selects function #0
-  REG(PASTE(PASTE(RTC_GPIO_PIN, RTC_CHANNEL), _REG)) &= ~PASTE(PASTE(RTC_GPIO_PIN, RTC_CHANNEL), _PAD_DRIVER); // p. 80: Normal output, not open-drain
-  REG(RTC_GPIO_ENABLE_REG) &= ~(1U << (RTC_CHANNEL + RTC_GPIO_ENABLE_S));                                      // p. 78: Disable GPIO function for our ADC input
-  REG(RTC_IO_SENSOR_PADS_REG) &= ~RTC_IO_SENSE1_FUN_IE_M;
-#if ADC_UNIT_1IDX == 1
-  // Now this is just completely undocumented--even the memory address is ostensibly nonexistent in the manual
-  REG(SENS_SAR_MEAS_CTRL2_REG) &= ~PASTE(PASTE(SENS_SAR, ADC_UNIT_1IDX), _DAC_XPD_FSM_M); // From `dac_ll_rtc_sync_by_adc(false)`
-  REG(RTC_IO_HALL_SENS_REG) &= ~RTC_IO_XPD_HALL_M;                                        // Disable the Hall sensor, which might want to steal ADC1 from us
-  REG(SENS_SAR_MEAS_WAIT2_REG) &= ~SENS_FORCE_XPD_AMP_M;                                  // Clear AMP settings to |= them below
-  REG(SENS_SAR_MEAS_WAIT2_REG) |= (SENS_FORCE_XPD_AMP_PD << SENS_FORCE_XPD_AMP_S);        // Disable AMP, which also might apparently steal
-  REG(SENS_SAR_MEAS_CTRL_REG) &= ~(SENS_AMP_RST_FB_FSM_S | SENS_AMP_SHORT_REF_FSM_M | SENS_AMP_SHORT_REF_GND_FSM_M);
-  REG(SENS_SAR_MEAS_WAIT1_REG) |= (SENS_SAR_AMP_WAIT1_M | SENS_SAR_AMP_WAIT2_M | SENS_SAR_AMP_WAIT3_M);
-#elif ADC_UNIT_1IDX == 2
-  REG(SENS_SAR_START_FORCE_REG) &= ~SENS_SAR2_PWDET_CCT_M;        // Power detector capacitance tuning--
-  REG(SENS_SAR_START_FORCE_REG) |= (4U << SENS_SAR2_PWDET_CCT_S); //   ...I'm trusting the manual on this one
-#else
-#error "Unrecognized ADC unit (should be 1 or 2)"
-#endif
-  ADC_CTRLREG |= PASTE(PASTE(SENS_SAR, ADC_UNIT_1IDX), _DATA_INV_M);                  // Invert ADC data
-  ADC_CTRLREG &= ~PASTE(PASTE(SENS_SAR, ADC_UNIT_1IDX), _CLK_DIV_M);                  // Clear prescaler so we can |= it
-  ADC_CTRLREG |= (SAR_PRESCALE << PASTE(PASTE(SENS_SAR, ADC_UNIT_1IDX), _CLK_DIV_S)); // |= it
-
-  REG(PASTE(PASTE(SENS_SAR_ATTEN, ADC_UNIT_1IDX), _REG)) &= ~(0x3 << (ADC_CHANNEL << 1U));              // Clear attenuation so we can |= it
-  REG(PASTE(PASTE(SENS_SAR_ATTEN, ADC_UNIT_1IDX), _REG)) |= ((ADC_ATTEN & 0x3) << (ADC_CHANNEL << 1U)); // |=
-
-#if ADC_USING_FREERTOS
-  vPortExitCritical(&rtc_spinlock); // See note on `rtc_spinlock` declaration above
-#endif
+  adc_set_bit_width();
+  adc_prescale();
+  adc_redirect_from_gpio();
+  adc_set_attenuation();
 
   ADC_READY = 1;
 }
 
-__attribute__((always_inline)) inline static int16_t adc_poll(void) {
+uint16_t adc_poll(void) {
   assert(ADC_READY);
 
-#if ADC_USING_FREERTOS
-  vPortEnterCritical(&rtc_spinlock);
-#endif
+  adc_disable_hall_sensor();
+  adc_disable_amp();
+  REG(SENS_SAR_READ_CTRL_REG) &= ~SENS_SAR1_DIG_FORCE_M;                                  // RTC control instead of digital
+  REG(SENS_SAR_MEAS_START1_REG) |= (SENS_MEAS1_START_FORCE_M | SENS_SAR1_EN_PAD_FORCE_M); // Software control instead of ULP control
+  REG(SENS_SAR_TOUCH_CTRL1_REG) |= (SENS_XPD_HALL_FORCE_M | SENS_HALL_PHASE_FORCE_M);     // Software control of Hall sensor as well (so we can shut it up)
+  // adc_oneshot_ll_set_channel(ADC_UNIT_1, ADC_CHANNEL);
+  REG(SENS_SAR_MEAS_START1_REG) &= ~SENS_SAR1_EN_PAD_M;
+  REG(SENS_SAR_MEAS_START1_REG) |= (1ULL << (ADC_CHANNEL + SENS_SAR1_EN_PAD_S));
 
-  // Force SAR power on, regardless of FSM
-  REG(SENS_SAR_MEAS_WAIT2_REG) |= SENS_FORCE_XPD_SAR_M; // This register is also entirely absent in the manual, but see ~/esp/esp-idf/components/hal/esp32/include/hal/sar_ctrl_ll.h:42 (`sar_ctrl_ll_set_power_mode`)
-
-  // Flip some settings (TODO: I have a sneaking suspicion that this is duplicated setup)
-  ADC_CTRLREG &= ~PASTE(PASTE(SENS_SAR, ADC_UNIT_1IDX), _DIG_FORCE_M);                                                                     // Don't force digital (we're using RTC)
-  REG(SENS_SAR_MEAS_START1_REG) |= (SENS_MEAS1_START_FORCE_M | PASTE(PASTE(SENS_SAR, ADC_UNIT_1IDX), _EN_PAD_FORCE_M));                    // Control with software instead of ULP
-  REG(SENS_SAR_TOUCH_CTRL1_REG) |= (SENS_XPD_HALL_FORCE_M | SENS_HALL_PHASE_FORCE_M);                                                      // Software control over the Hall sensor as well
-  REG(PASTE(PASTE(SENS_SAR_MEAS_START, ADC_UNIT_1IDX), _REG)) &= ~PASTE(PASTE(SENS_SAR, ADC_UNIT_1IDX), _EN_PAD_M);                        // Clear all channels so we can select one below
-  REG(PASTE(PASTE(SENS_SAR_MEAS_START, ADC_UNIT_1IDX), _REG)) |= (1U << (ADC_CHANNEL + PASTE(PASTE(SENS_SAR, ADC_UNIT_1IDX), _EN_PAD_S))); // Clear all channels so we can select one below
-
-  REG(PASTE(PASTE(SENS_SAR_MEAS_START, ADC_UNIT_1IDX), _REG)) &= ~PASTE(PASTE(SENS_SAR, ADC_UNIT_1IDX), _EN_PAD_M);
-  REG(PASTE(PASTE(SENS_SAR_MEAS_START, ADC_UNIT_1IDX), _REG)) |= (1ULL << ADC_CHANNEL);
-
-#if ADC_UNIT_1IDX == 1
+  REG(SENS_SAR_MEAS_START1_REG) &= ~SENS_SAR1_EN_PAD_M;
+  REG(SENS_SAR_MEAS_START1_REG) |= (1ULL << (ADC_CHANNEL + SENS_SAR1_EN_PAD_S));
   do {
-  } while (REG(SENS_SAR_SLAVE_ADDR1_REG) & SENS_MEAS_STATUS_M); // This bitfield is supposed to be reserved (p. 668)!!! what the fuck?
-#endif
-  _Static_assert(SENS_MEAS1_START_SAR_M == SENS_MEAS2_START_SAR_M);                       // We arbitrarily use MEAS1 below
-  REG(PASTE(PASTE(SENS_SAR_MEAS_START, ADC_UNIT_1IDX), _REG)) &= ~SENS_MEAS1_START_SAR_M; // Finish (the last) measurement (to be safe)
-  REG(PASTE(PASTE(SENS_SAR_MEAS_START, ADC_UNIT_1IDX), _REG)) |= SENS_MEAS1_START_SAR_M;  // Begin measurement
+  } while (force_32b_read(SENS_SAR_SLAVE_ADDR1_REG, SENS_MEAS_STATUS_M)); // This register is completely absent from the manual--not even its memory address :_)
 
-  _Static_assert(SENS_MEAS1_DONE_SAR_M == SENS_MEAS2_DONE_SAR_M);
-  do { // wait for the oven to ding
-  } while (REG(PASTE(PASTE(SENS_SAR_MEAS_START, ADC_UNIT_1IDX), _REG)) & SENS_MEAS1_DONE_SAR_M);
+  REG(SENS_SAR_MEAS_START1_REG) |= SENS_MEAS1_START_SAR_M;
 
-  _Static_assert(SENS_MEAS1_DATA_SAR_M == SENS_MEAS2_DATA_SAR_M);
-  int16_t adc_value = ((REG(PASTE(PASTE(SENS_SAR_MEAS_START, ADC_UNIT_1IDX), _REG)) >> SENS_MEAS1_DATA_SAR_S) & SENS_MEAS1_DATA_SAR_V);
+  do {
+  } while (!(REG(SENS_SAR_MEAS_START1_REG) & SENS_MEAS1_DONE_SAR_M));
 
-  // Cede SAR power control back to FSM
-  REG(SENS_SAR_MEAS_WAIT2_REG) &= ~SENS_FORCE_XPD_SAR_M; // Mirrors the first line of the critical section: also completely undocumented
+  // return adc_oneshot_ll_get_raw_result(ADC_UNIT_1);
+  // ret_val = HAL_FORCE_READ_U32_REG_FIELD(SENS.sar_meas_start1, meas1_data_sar);
+  uint16_t adc_value = (force_32b_read(SENS_SAR_MEAS_START1_REG, SENS_MEAS1_DATA_SAR) >> SENS_MEAS1_DATA_SAR_S /* which happens to be 0 */);
 
-#if ADC_USING_FREERTOS
-  vPortExitCritical(&rtc_spinlock);
-#endif
+  REG(SENS_SAR_MEAS_START1_REG) &= ~SENS_MEAS1_START_SAR_M;
 
   return adc_value;
 }
 
-#endif // ADC_H
+#endif // ADCDUINO_H
