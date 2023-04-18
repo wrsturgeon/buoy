@@ -2,15 +2,22 @@
 #define BITBANG_SPI_H
 
 #include "hardware/gpio.h"
-#include "pins.h"
+#include "hardware/pins.h"
 #include "sane-assert.h"
 
 #include <rom/ets_sys.h>
 
+#if SCREEN_FLIPPED_OVER_MCU
+#define PIN_TCS FEATHER_15
+#define PIN_MSI FEATHER_33
+#define PIN_SCK FEATHER_27
+#define PIN_MSO FEATHER_12
+#else // SCREEN_FLIPPED_OVER_MCU
 #define PIN_TCS FEATHER_32
 #define PIN_MSI FEATHER_14
 #define PIN_SCK FEATHER_SCL
 #define PIN_MSO FEATHER_SDA
+#endif // SCREEN_FLIPPED_OVER_MCU
 
 //%%%%%%%%%%%%%%%%
 // Timing specs on the ST7735 datasheet, p. 25:

@@ -5,7 +5,7 @@
 // https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf
 
 #include "hardware/gpio.h"
-#include "pins.h"
+#include "hardware/pins.h"
 #include "sane-assert.h"
 
 #include <driver/spi_master.h>

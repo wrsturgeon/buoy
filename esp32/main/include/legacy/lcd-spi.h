@@ -6,7 +6,7 @@
 // https://cdn-shop.adafruit.com/datasheets/ST7735R_V0.2.pdf
 
 #include "gpio.h"
-#include "pins.h"
+#include "hardware/pins.h"
 #include "sane-assert.h"
 #include "spill.h"
 #include "st7735.h"
