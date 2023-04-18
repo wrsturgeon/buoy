@@ -59,15 +59,17 @@ _Static_assert(ADC_BIT_WIDTH > 8);
   } while (0)
 __attribute__((always_inline)) inline static uint8_t display_and_check_heartbeat(uint16_t v) {
   static uint8_t hist[128];
-  static uint16_t runmean = (1ULL << (ADC_BIT_WIDTH - 1U));
+  static uint8_t runmean = 128;
   static uint8_t runpeak = 0;
   static uint8_t peakidx = 0;
   static uint8_t dotted = 0;
   static uint8_t falling = 0; // if we recorded a heartbeat & are now waiting for this "bump" to finish
 
-  if ((v >> BIT_DISPARITY) > runpeak) {
+  uint8_t const vrsh = (v >> BIT_DISPARITY);
+
+  if (vrsh > runpeak) {
     lcd_block(runpeak >> LOG2_COMPRESS_GRAPH, 0, runpeak >> LOG2_COMPRESS_GRAPH, 127, BACKGROUND); // Erase the last peak
-    runpeak = (v >> BIT_DISPARITY);
+    runpeak = vrsh;
     peakidx = 127;
   } else if (peakidx) {
     --peakidx;
@@ -85,17 +87,17 @@ __attribute__((always_inline)) inline static uint8_t display_and_check_heartbeat
   }
   lcd_block(runpeak >> LOG2_COMPRESS_GRAPH, 0, runpeak >> LOG2_COMPRESS_GRAPH, 127, PULSEPEAK); // Erase the last peak
 
-  if (v > runmean) {
-    if (runmean & ((1ULL << (BIT_DISPARITY + LOG2_COMPRESS_GRAPH)) - 1U)) { lcd_block((runmean >> (BIT_DISPARITY + LOG2_COMPRESS_GRAPH)), 0, (runmean >> (BIT_DISPARITY + LOG2_COMPRESS_GRAPH)), 127, BACKGROUND); }
+  if (vrsh > runmean) {
+    if (runmean & ((1ULL << LOG2_COMPRESS_GRAPH) - 1U)) { lcd_block((runmean >> LOG2_COMPRESS_GRAPH), 0, (runmean >> LOG2_COMPRESS_GRAPH), 127, BACKGROUND); }
     ++runmean;
-  } else if (v < runmean) {
+  } else if (vrsh < runmean) {
     falling = 0;
     GPIO_PULL(PIN_BUZZER, LO);
-    if ((~runmean) & ((1ULL << (BIT_DISPARITY + LOG2_COMPRESS_GRAPH)) - 1U)) { lcd_block((runmean >> (BIT_DISPARITY + LOG2_COMPRESS_GRAPH)), 0, (runmean >> (BIT_DISPARITY + LOG2_COMPRESS_GRAPH)), 127, BACKGROUND); }
+    if ((~runmean) & ((1ULL << LOG2_COMPRESS_GRAPH) - 1U)) { lcd_block((runmean >> LOG2_COMPRESS_GRAPH), 0, (runmean >> LOG2_COMPRESS_GRAPH), 127, BACKGROUND); }
     --runmean;
   }
   spi_open();
-  LCD_TRUST_SET_ADDR((runmean >> (BIT_DISPARITY + LOG2_COMPRESS_GRAPH)), 0, (runmean >> (BIT_DISPARITY + LOG2_COMPRESS_GRAPH)), 127);
+  LCD_TRUST_SET_ADDR((runmean >> LOG2_COMPRESS_GRAPH), 0, (runmean >> LOG2_COMPRESS_GRAPH), 127);
   for (uint16_t ij = 0; ij != 128; ++ij) {
     spi_send_16b((!dotted) - 1);
     INCR_DOTTED();
@@ -117,7 +119,7 @@ __attribute__((always_inline)) inline static uint8_t display_and_check_heartbeat
     pen = tgt;
   }
 
-  hist[127] = (v >> BIT_DISPARITY);
+  hist[127] = vrsh;
 
   tgt = (hist[127] >> LOG2_COMPRESS_GRAPH);
   if (pen == tgt) {
