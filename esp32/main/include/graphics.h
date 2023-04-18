@@ -57,7 +57,7 @@ _Static_assert(ADC_BIT_WIDTH > 8);
   do {                                         \
     if ((++dotted) == NDOTTED) { dotted = 0; } \
   } while (0)
-static uint8_t display_and_check_heartbeat(uint16_t v) {
+__attribute__((always_inline)) inline static uint8_t display_and_check_heartbeat(uint16_t v) {
   static uint8_t hist[128];
   static uint16_t runmean = (1ULL << (ADC_BIT_WIDTH - 1U));
   static uint8_t runpeak = 0;
@@ -65,7 +65,35 @@ static uint8_t display_and_check_heartbeat(uint16_t v) {
   static uint8_t dotted = 0;
   static uint8_t falling = 0; // if we recorded a heartbeat & are now waiting for this "bump" to finish
 
-  // Inlined part of `lcd_block` for a dotted line:
+  if ((v >> BIT_DISPARITY) > runpeak) {
+    lcd_block(runpeak >> LOG2_COMPRESS_GRAPH, 0, runpeak >> LOG2_COMPRESS_GRAPH, 127, BACKGROUND); // Erase the last peak
+    runpeak = (v >> BIT_DISPARITY);
+    peakidx = 127;
+  } else if (peakidx) {
+    --peakidx;
+  } else {
+    // Iterate & find the new peak (unfortunately)
+    lcd_block(runpeak >> LOG2_COMPRESS_GRAPH, 0, runpeak >> LOG2_COMPRESS_GRAPH, 127, BACKGROUND); // Erase the last peak
+    runpeak = hist[0];
+    peakidx = 0;
+    for (uint8_t i = 1; i != 128; ++i) {
+      if (hist[i] >= runpeak) {
+        runpeak = hist[i];
+        peakidx = i;
+      }
+    }
+  }
+  lcd_block(runpeak >> LOG2_COMPRESS_GRAPH, 0, runpeak >> LOG2_COMPRESS_GRAPH, 127, PULSEPEAK); // Erase the last peak
+
+  if (v > runmean) {
+    if (runmean & ((1ULL << (BIT_DISPARITY + LOG2_COMPRESS_GRAPH)) - 1U)) { lcd_block((runmean >> (BIT_DISPARITY + LOG2_COMPRESS_GRAPH)), 0, (runmean >> (BIT_DISPARITY + LOG2_COMPRESS_GRAPH)), 127, BACKGROUND); }
+    ++runmean;
+  } else if (v < runmean) {
+    falling = 0;
+    GPIO_PULL(PIN_BUZZER, LO);
+    if ((~runmean) & ((1ULL << (BIT_DISPARITY + LOG2_COMPRESS_GRAPH)) - 1U)) { lcd_block((runmean >> (BIT_DISPARITY + LOG2_COMPRESS_GRAPH)), 0, (runmean >> (BIT_DISPARITY + LOG2_COMPRESS_GRAPH)), 127, BACKGROUND); }
+    --runmean;
+  }
   spi_open();
   LCD_TRUST_SET_ADDR((runmean >> (BIT_DISPARITY + LOG2_COMPRESS_GRAPH)), 0, (runmean >> (BIT_DISPARITY + LOG2_COMPRESS_GRAPH)), 127);
   for (uint16_t ij = 0; ij != 128; ++ij) {
@@ -99,36 +127,6 @@ static uint8_t display_and_check_heartbeat(uint16_t v) {
   } else {
     lcd_block(pen + 1, 127, tgt, 127, PULSELINE);
   }
-
-  if (v > runmean) {
-    lcd_block((runmean >> (BIT_DISPARITY + LOG2_COMPRESS_GRAPH)), 0, (runmean >> (BIT_DISPARITY + LOG2_COMPRESS_GRAPH)), 127, BACKGROUND);
-    ++runmean;
-  } else if (v < runmean) {
-    falling = 0;
-    GPIO_PULL(PIN_BUZZER, LO);
-    lcd_block((runmean >> (BIT_DISPARITY + LOG2_COMPRESS_GRAPH)), 0, (runmean >> (BIT_DISPARITY + LOG2_COMPRESS_GRAPH)), 127, BACKGROUND);
-    --runmean;
-  }
-
-  if ((v >> BIT_DISPARITY) > runpeak) {
-    lcd_block(runpeak >> LOG2_COMPRESS_GRAPH, 0, runpeak >> LOG2_COMPRESS_GRAPH, 127, BACKGROUND); // Erase the last peak
-    runpeak = (v >> BIT_DISPARITY);
-    peakidx = 127;
-  } else if (peakidx) {
-    --peakidx;
-  } else {
-    // Iterate & find the new peak (unfortunately)
-    lcd_block(runpeak >> LOG2_COMPRESS_GRAPH, 0, runpeak >> LOG2_COMPRESS_GRAPH, 127, BACKGROUND); // Erase the last peak
-    runpeak = hist[0];
-    peakidx = 0;
-    for (uint8_t i = 1; i != 128; ++i) {
-      if ((hist[i] << 3) >= runpeak) {
-        runpeak = hist[i];
-        peakidx = i;
-      }
-    }
-  }
-  lcd_block(runpeak >> LOG2_COMPRESS_GRAPH, 0, runpeak >> LOG2_COMPRESS_GRAPH, 127, BACKGROUND); // Erase the last peak
 
   if ((!falling) && ((v - runmean) > (((runpeak << BIT_DISPARITY) - runmean) >> 1U))) { // If we're more than halfway from mean to peak AND not already falling
     falling = 1;

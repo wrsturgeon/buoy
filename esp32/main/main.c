@@ -1,7 +1,7 @@
 #define NDEBUG 1
 
 //%%%%%%%%%%%%%%%% CONFIGURABLE PARAMETERS:
-#define LOG2_CYCLES_PER_SECOND 1U
+#define LOG2_CYCLES_PER_SECOND 5U
 #define LOG2_ADC_SAMPLES 0U // Set <= 4 so we use at most (2^4=)16 12-bit numbers and a 16-bit sum is juuuuust guaranteed not to overflow
 #define LOG2_HEARTBEAT_SAMPLES 4U
 //%%%%%%%%%%%%%%%% END CONFIGURABLE PARAMETERS
