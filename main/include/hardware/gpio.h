@@ -28,17 +28,17 @@
 // Optional runtime checks against shooting ourselves in the foot
 #ifndef NDEBUG
 static uint8_t GPIO_ALREADY_ENABLED[N_GPIO >> 3U] = {0}; // each bit represents one pin
-#define GPIO_MARK_ENABLED(...)                                                 \
-  do {                                                                         \
-    SANE_ASSERT(((uint32_t)(__VA_ARGS__)) == (__VA_ARGS__));                   \
-    SANE_ASSERT((__VA_ARGS__) < N_GPIO);                                       \
-    GPIO_ALREADY_ENABLED[(__VA_ARGS__) >> 3U] |= (1ULL << ((__VA_ARGS__)&7U)); \
+#define GPIO_MARK_ENABLED(...)                                                        \
+  do {                                                                                \
+    _Static_assert(((uint32_t)(__VA_ARGS__)) == (__VA_ARGS__), "GPIO pin > 65536?!"); \
+    _Static_assert((__VA_ARGS__) < N_GPIO, "GPIO pin > N_GPIO");                      \
+    GPIO_ALREADY_ENABLED[(__VA_ARGS__) >> 3U] |= (1ULL << ((__VA_ARGS__)&7U));        \
   } while (0)
-#define GPIO_MARK_DISABLED(...)                                                 \
-  do {                                                                          \
-    SANE_ASSERT(((uint32_t)(__VA_ARGS__)) == (__VA_ARGS__));                    \
-    SANE_ASSERT((__VA_ARGS__) < N_GPIO);                                        \
-    GPIO_ALREADY_ENABLED[(__VA_ARGS__) >> 3U] &= ~(1ULL << ((__VA_ARGS__)&7U)); \
+#define GPIO_MARK_DISABLED(...)                                                       \
+  do {                                                                                \
+    _Static_assert(((uint32_t)(__VA_ARGS__)) == (__VA_ARGS__), "GPIO pin > 65536?!"); \
+    _Static_assert((__VA_ARGS__) < N_GPIO, "GPIO pin > N_GPIO");                      \
+    GPIO_ALREADY_ENABLED[(__VA_ARGS__) >> 3U] &= ~(1ULL << ((__VA_ARGS__)&7U));       \
   } while (0)
 #define GPIO_CHECK_ENABLED(...)                                                            \
   do {                                                                                     \
@@ -51,7 +51,7 @@ static uint8_t GPIO_ALREADY_ENABLED[N_GPIO >> 3U] = {0}; // each bit represents 
 #define GPIO_CHECK_ENABLED(...)
 #endif // NDEBUG
 
-#define GPIO_ENABLE_OUTPUT(...) GPIO_ENABLE_OUTPUT_LITERAL(__VA_ARGS__) // expand arguments instead of copying them literally
+#define GPIO_ENABLE_OUTPUT(...) GPIO_ENABLE_OUTPUT_LITERAL(__VA_ARGS__) // NOLINT(bugprone-branch-clone)
 #define GPIO_ENABLE_OUTPUT_LITERAL(...)                                                                                             \
   do {                                                                                                                              \
     GPIO_MARK_ENABLED(__VA_ARGS__);                                                                                                 \
@@ -77,7 +77,7 @@ static uint8_t GPIO_ALREADY_ENABLED[N_GPIO >> 3U] = {0}; // each bit represents 
       GPIO_ENABLE_32_THRU_39 |= (1ULL << ((__VA_ARGS__)&31U));                                                                      \
     }                                                                                                                               \
   } while (0)
-#define GPIO_DISABLE_OUTPUT(...) GPIO_DISABLE_OUTPUT_LITERAL(__VA_ARGS__) // expand arguments instead of copying them literally
+#define GPIO_DISABLE_OUTPUT(...) GPIO_DISABLE_OUTPUT_LITERAL(__VA_ARGS__) // NOLINT(bugprone-branch-clone)
 #define GPIO_DISABLE_OUTPUT_LITERAL(...)                                                                                            \
   do {                                                                                                                              \
     GPIO_MARK_DISABLED(__VA_ARGS__);                                                                                                \

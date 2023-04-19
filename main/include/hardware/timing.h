@@ -2,7 +2,11 @@
 #define TIMING_H
 
 #ifndef PRESCALE_BY
+#ifdef __CLANG_TIDY__
+#define PRESCALE_BY 0
+#else // __CLANG_TIDY__
 #error Please #define PRESCALE_BY before including `hardware/timing.h`
+#endif // __CLANG_TIDY__
 #endif // PRESCALE_BY
 
 #include "hardware/reg.h"

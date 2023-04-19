@@ -55,6 +55,8 @@ static prescale_overflow_t prescale_overflow = 0;
 static prescale_overflow_t prescale_overflow_next = PRESCALE_OVERFLOW_PERIOD;
 #endif // PRESCALE_WHOLE_ENCHILADA < (1ULL << 16U)
 
+#include <sdkconfig.h>
+
 #include "graphics.h"
 #include "hardware/adc.h"
 #include "hardware/timing.h"
@@ -115,7 +117,7 @@ void app_main(void) {
   // Main loop
   do {
 
-    // TODO: timer interrupts (will also fix ADC sampling bias!)
+    // TODO(wrsturgeon): timer interrupts (will also fix ADC sampling bias!)
     while (timing_get_clock_32b() < ++this_tick) {
       // printf("Ahead of schedule\r\n");
 

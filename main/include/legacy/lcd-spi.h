@@ -5,11 +5,11 @@
 // https://www.adafruit.com/product/358
 // https://cdn-shop.adafruit.com/datasheets/ST7735R_V0.2.pdf
 
-#include "gpio.h"
+#include "bitbang/st7735.h"
+#include "hardware/gpio.h"
 #include "hardware/pins.h"
 #include "sane-assert.h"
 #include "spill.h"
-#include "st7735.h"
 
 #include <rom/ets_sys.h>
 
@@ -112,8 +112,6 @@ __attribute__((always_inline)) inline static void lcd_init(void) {
   // Default to rotation 3
   SPILL_SAFE_COMMAND(CMD_MADCTL, 1, 10, MADCTL_MX | MADCTL_MV | MADCTL_RGB);
   spill_close();
-
-  // TODO: fill background HERE
 
   // Turn on the display
   GPIO_PULL_HI(LCD_BACKLIGHT);

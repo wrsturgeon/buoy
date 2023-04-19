@@ -11,6 +11,8 @@
 
 #include <soc/spi_reg.h>
 
+#include <stdio.h>
+
 #define SPIN 2 // HSPI
 #define SPI_MODE 0
 
@@ -73,13 +75,13 @@ __attribute__((always_inline)) inline static void spill_finish_setup(void) {
   // SPI_CLOCK_REG(SPIN)
 
   // Four-line half-duplex mode: Manual p. 122
-  // TODO: try three-line, save a pin
+  // TODO(wrsturgeon): try three-line, save a pin
   //   - SPI_MISO_DLEN_REG
   //   - SPI_MOSI_DLEN_REG
   REG(SPI_USER_REG(SPIN)) |= SPI_USR_MOSI_M;
 
   // Manual p. 132
-  REG(SPI_CTRL_REG(SPIN)) &= ~(SPI_FREAD_DUAL_M | SPI_FREAD_QUAD_M | SPI_FREAD_DIO_M | SPI_FREAD_QIO_M | SPI_RD_BIT_ORDER_M | SPI_WR_BIT_ORDER_M); // TODO: TRY CHANGING BIT ORDERS
+  REG(SPI_CTRL_REG(SPIN)) &= ~(SPI_FREAD_DUAL_M | SPI_FREAD_QUAD_M | SPI_FREAD_DIO_M | SPI_FREAD_QIO_M | SPI_RD_BIT_ORDER_M | SPI_WR_BIT_ORDER_M); // TODO(wrsturgeon): TRY CHANGING BIT ORDERS
 
   // Finishing SPI_MISO_DELAY_NUM_M, SPI_MOSI_DELAY_MODE_M, & SPI_MOSI_DELAY_NUM_M from mode above, plus Manual p. 134
   REG(SPI_CTRL2_REG(SPIN)) &= ~(SPI_SETUP_TIME_M | SPI_HOLD_TIME_M | SPI_MISO_DELAY_NUM_M | SPI_MOSI_DELAY_MODE_M | SPI_MOSI_DELAY_NUM_M);
@@ -99,34 +101,34 @@ __attribute__((always_inline)) inline static void spill_finish_setup(void) {
   REG(SPI_PIN_REG(SPIN)) |= (SPI_CS1_DIS_M | SPI_CS2_DIS_M /* SPI_CK_IDLE_EDGE handled above */ | SPI_CS_KEEP_ACTIVE_M);
 }
 
-__attribute__((always_inline)) inline static void spill_setup(void) {
-  SANE_ASSERT(!SPILL_IS_SET_UP);
-  spill_set_mode();
-  spill_finish_setup();
-  GPIO_ENABLE_OUTPUT(SPI(CS));
-  GPIO_PULL_HI(SPI(CS));
-  SPILL_IS_SET_UP = 1;
-}
+// __attribute__((always_inline)) inline static void spill_setup(void) {
+//   SANE_ASSERT(!SPILL_IS_SET_UP);
+//   spill_set_mode();
+//   spill_finish_setup();
+//   GPIO_ENABLE_OUTPUT(SPI(CS));
+//   GPIO_PULL_HI(SPI(CS));
+//   SPILL_IS_SET_UP = 1;
+// }
 
-__attribute__((always_inline)) inline static void spill_open(void) {
-  SANE_ASSERT(SPILL_IS_SET_UP);
-  SANE_ASSERT(!SPILL_IS_OPEN);
-  ASSERT_GPIO_POLL_V(SPI(CS))
-  ();
+// __attribute__((always_inline)) inline static void spill_open(void) {
+//   SANE_ASSERT(SPILL_IS_SET_UP);
+//   SANE_ASSERT(!SPILL_IS_OPEN);
+//   ASSERT_GPIO_POLL_V(SPI(CS))
+//   ();
 
-  GPIO_PULL_LO(SPI(CS));
+//   GPIO_PULL_LO(SPI(CS));
 
-  SPILL_IS_OPEN = 1;
-}
+//   SPILL_IS_OPEN = 1;
+// }
 
-__attribute__((always_inline)) inline static void spill_close(void) {
-  SANE_ASSERT(SPILL_IS_OPEN);
-  SANE_ASSERT(!GPIO_POLL_V(SPI(CS)));
+// __attribute__((always_inline)) inline static void spill_close(void) {
+//   SANE_ASSERT(SPILL_IS_OPEN);
+//   SANE_ASSERT(!GPIO_POLL_V(SPI(CS)));
 
-  GPIO_PULL_HI(SPI(CS));
+//   GPIO_PULL_HI(SPI(CS));
 
-  SPILL_IS_OPEN = 0;
-}
+//   SPILL_IS_OPEN = 0;
+// }
 
 // Manual p. 122 (Four-line half-duplex comm.)
 #define SPILL_SAFE_COMMAND(CMD, NBYTE, DELAY, ...)                                                       \

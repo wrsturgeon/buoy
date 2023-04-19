@@ -4,7 +4,7 @@
 #include <assert.h>
 
 #ifndef NDEBUG
-#define SANE_ASSERT(...) assert(...)
+#define SANE_ASSERT(...) assert(__VA_ARGS__)
 #else                    // NDEBUG
 #define SANE_ASSERT(...) // For whatever reason, ESP32's `assert` processes its argument...
 #endif                   // NDEBUG

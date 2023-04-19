@@ -7,12 +7,13 @@
 
 #include <soc/adc_channel.h>
 #include <soc/gpio_reg.h>
+#include <soc/io_mux_reg.h>
 #include <soc/rtc_io_periph.h>
 #include <soc/sens_reg.h>
 #include <soc/syscon_reg.h>
 
 #define ADC_ATTENUATION 0 // 3
-_Static_assert((ADC_ATTENUATION & 3U) == ADC_ATTENUATION);
+_Static_assert((ADC_ATTENUATION & 3U) == ADC_ATTENUATION, "ADC attenuation must be on [0..3]");
 #define ADC_CLK_DIV 2
 #define ADC_BIT_WIDTH 12
 #define ADC_PIN 36

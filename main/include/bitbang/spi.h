@@ -22,7 +22,7 @@
 //%%%%%%%%%%%%%%%%
 // Timing specs on the ST7735 datasheet, p. 25:
 // https://cdn-shop.adafruit.com/datasheets/ST7735R_V0.2.pdf
-// #define PLAY_IT_SAFE // TODO: turn this off and see what happens
+// #define PLAY_IT_SAFE
 #ifdef PLAY_IT_SAFE
 #define POSTCMD_DELAY(...) ets_delay_us(__VA_ARGS__);
 #else

@@ -18,7 +18,7 @@ static spi_device_handle_t FUCK_IT_GLOBAL_SPI_HANDLE;
 #define NO_DMA 0 // for clarity of intention
 
 void spi_pre_transfer_callback(spi_transaction_t* t) {
-  if (t->user) {
+  if (t->user) { // NOLINT(bugprone-branch-clone)
     GPIO_PULL_HI(LCD_DC);
   } else {
     GPIO_PULL_LO(LCD_DC);
@@ -48,7 +48,7 @@ static spi_bus_config_t const SPI_BUS_CONFIG = {
 
 static spi_device_interface_config_t const SPI_DEVICE_CONFIG = {
     .command_bits = 8,
-    .address_bits = 0, // TODO: verify
+    .address_bits = 0, // TODO(wrsturgeon): verify
     .dummy_bits = 0,
     .mode = 0,
     .clock_source = SPI_CLK_SRC_DEFAULT,
@@ -76,7 +76,7 @@ __attribute__((always_inline)) inline static void spi_init(void) {
 
   ESP_ERROR_CHECK(spi_device_acquire_bus(FUCK_IT_GLOBAL_SPI_HANDLE, portMAX_DELAY));
 
-  // TODO: REENABLE vvv
+  // TODO(wrsturgeon): REENABLE vvv
   // GPIO_ENABLE_OUTPUT(SPI(CS));
 
   // Manual p. 128
@@ -96,7 +96,7 @@ __attribute__((always_inline)) inline static void spi_open_comm(void) {
 #ifndef NDEBUG
   SPI_COMM_OPEN = 1;
 #endif
-  // TODO: REENABLE vvv
+  // TODO(wrsturgeon): REENABLE vvv
   // GPIO_PULL_LO(SPI(CS));
 }
 
@@ -104,11 +104,9 @@ __attribute__((always_inline)) inline static void spi_close_comm(void) {
 #ifndef NDEBUG
   SPI_COMM_OPEN = 0;
 #endif
-  // TODO: REENABLE vvv
+  // TODO(wrsturgeon): REENABLE vvv
   // GPIO_PULL_HI(SPI(CS));
 }
-
-#include </Users/willsturgeon/esp/esp-idf/components/driver/spi/gpspi/spi_master.c>
 
 __attribute__((always_inline)) inline static void spi_trust_send_8b(uint8_t const data) {
   // Arduino implementation:

@@ -1,16 +1,36 @@
-#include "lcd.h"
-#include "ascii.h"
-#include "st7735.h"
+#ifndef LCD_H
+#define LCD_H
 
-void lcd_pixel(uint8_t x, uint8_t y, uint16_t color) {
-  lcd_setAddr(x, y, x, y);
-  SPI_ControllerTx_16bit(color);
+#include "ascii.h"
+#include "lcd-spi.h"
+#include "sane-assert.h"
+
+#include <stdint.h>
+
+// Converts 24b RGB to 16b 5-6-5 RGB (respectively) with some bit trickery
+#define RGB565(R, G, B) (((uint16_t)(((uint16_t)(((uint8_t)(R)) & 0b11111000U)) << 8U)) | ((uint16_t)(((uint16_t)(((uint8_t)(G)) & 0b11111100U)) << 5U)) | (((uint8_t)(B)) >> 3U))
+// #define RGB565(R,G,B) ((((31*((R)+4))/255)<<11) | (((63*((G)+2))/255)<<5) | ((31*((B)+4))/255))
+#define RED RGB565(255, 0, 0)
+#define GREEN RGB565(0, 255, 0)
+#define BLUE RGB565(0, 0, 255)
+#define WHITE RGB565(255, 255, 255)
+#define BLACK RGB565(0, 0, 0)
+
+// NOLINTNEXTLINE(misc-unused-parameters)
+__attribute__((always_inline)) inline static void lcd_pixel(uint8_t x, uint8_t y, uint16_t color) {
+  SANE_ASSERT(LCD_INITIALIZED);
+  SANE_ASSERT(!SPILL_IS_OPEN);
+  spill_open();
+  LCD_TRUST_SET_ADDR(x, y, x, y);
+  spill_send_16b_data(color);
+  spill_close();
 }
 
-void lcd_char(uint8_t x, uint8_t y, uint16_t character, uint16_t fColor, uint16_t bColor) {
+static void lcd_char(uint8_t x, uint8_t y, uint16_t character, uint16_t fColor, uint16_t bColor) {
+  SANE_ASSERT(LCD_INITIALIZED);
+  SANE_ASSERT(!SPILL_IS_OPEN);
   uint16_t row = character - 0x20; // Determine row of ASCII table starting at space
   unsigned i, j;
-  //	if ((lcd_WIDTH-x>7)&&(lcd_HEIGHT-y>7)){
   for (i = 0; i < 5; i++) {
     uint8_t pixels = ASCII[row][i]; // Go through the list of pixels
     for (j = 0; j < 8; j++) {
@@ -21,10 +41,18 @@ void lcd_char(uint8_t x, uint8_t y, uint16_t character, uint16_t fColor, uint16_
       }
     }
   }
-  //	}
 }
 
-__attribute__((always_inline)) inline uint8_t
+__attribute__((always_inline)) inline static void lcd_block(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint16_t color) {
+  SANE_ASSERT(LCD_INITIALIZED);
+  SANE_ASSERT(!SPILL_IS_OPEN);
+  spill_open();
+  LCD_TRUST_SET_ADDR(x0, y0, x1, y1);
+  for (uint16_t ij = 0; ij != (uint16_t)(((uint16_t)(y1 - y0 + 1)) * (uint16_t)(x1 - x0 + 1)); ++ij) { spill_send_16b_data(color); }
+  spill_close();
+}
+
+__attribute__((always_inline)) inline static uint8_t
 sq_dist_test(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint16_t rsq) {
   uint8_t dx = x1 - x0;
   uint8_t dy = y1 - y0;
@@ -32,7 +60,7 @@ sq_dist_test(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint16_t rsq) {
 }
 
 // NOLINTNEXTLINE(misc-no-recursion)
-void circle_remainder_recursive(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint16_t rsq, uint16_t color) {
+static void circle_remainder_recursive(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint16_t rsq, uint16_t color) {
   // recursively draw the biggest square you can
   // find l s.t. (x1+l,y1+l) is exactly `radius` away from (x0,y0),
   // and draw that square 8 times around the cicle
@@ -70,7 +98,9 @@ void circle_remainder_recursive(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, 
   circle_remainder_recursive(x0, y0, x1 + l, y1, rsq, color);
 }
 
-void lcd_circle(uint8_t x0, uint8_t y0, uint8_t radius, uint16_t color) {
+__attribute__((always_inline)) inline static void lcd_circle(uint8_t x0, uint8_t y0, uint8_t radius, uint16_t color) {
+  SANE_ASSERT(LCD_INITIALIZED);
+  SANE_ASSERT(!SPILL_IS_OPEN);
   // Draw the biggest rectangle you can, recursively, down to 1 pixel
   // sqrt(1/2)*256=181 so x*sqrt(1/2) ~= (x*181)>>8 without float mul
   uint8_t hsl /* half side-length */ = (uint16_t)(181 * (uint16_t)radius) >> 8;
@@ -80,7 +110,9 @@ void lcd_circle(uint8_t x0, uint8_t y0, uint8_t radius, uint16_t color) {
   circle_remainder_recursive(x0, y0, x0, y1, rsq, color);
 }
 
-void lcd_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t c) {
+static void lcd_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t c) {
+  SANE_ASSERT(LCD_INITIALIZED);
+  SANE_ASSERT(!SPILL_IS_OPEN);
   int8_t flipx, flipy, incr, zncr;
   int16_t dx, dy, i, z, e = 0;
   int16_t const *i0, *i1, *px, *py, *di, *dz;
@@ -116,66 +148,26 @@ void lcd_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t c) {
   }
 }
 
-void lcd_block(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint16_t color) {
-  sendCommands((uint8_t[]){
-                   ST7735_CASET, 4, // Column (4 arguments)
-                   0U,              // start (upper 8 bits)
-                   x0,              // start (lower 8 bits)
-                   0U,              // end (upper 8 bits)
-                   x1,              // end (lower 8 bits)
-                   0U,              // delay before next command
-                   ST7735_RASET,
-                   4,  // Page (4 arguments)
-                   0U, // start (upper 8 bits)
-                   y0, // start (lower 8 bits)
-                   0U, // end (upper 8 bits)
-                   y1, // end (lower 8 bits)
-                   0U, // delay
-                   ST7735_RAMWR,
-                   0,
-                   /*5*/ 0 // write to RAM, delay 5 clocks(?)
-               },
-               3);
-  clear(LCD_PORT, LCD_TFT_CS); // pull CS low to start communication
-  for (uint16_t ij = 0; ij != (uint16_t)(((uint16_t)(y1 - y0 + 1)) * (uint16_t)(x1 - x0 + 1)); ++ij) {
-    SPDR = (color >> 8U); // Place data to be sent on registers
-    do {
-    } while (!(SPSR & (1U << SPIF))); // wait for end of transmission
-    SPDR = color;                     // Place data to be sent on registers
-    do {
-    } while (!(SPSR & (1U << SPIF))); // wait for end of transmission
-  }
-  set(LCD_PORT, LCD_TFT_CS); // pull CS high to end communication
-}
-
 // Vertical line.
-void lcd_look_to_the_cookie(uint8_t x0, uint8_t y0, uint8_t x1, uint16_t color1, uint16_t color2) {
-  sendCommands((uint8_t[]){ST7735_CASET, 4, 0U, x0, 0U, x1, 0U, ST7735_RASET, 4, 0U, y0, 0U, y0 + 1, 0U, ST7735_RAMWR, 0, 0}, 3);
-  clear(LCD_PORT, LCD_TFT_CS); // pull CS low to start communication
-  for (uint16_t ij = 0; ij != (uint16_t)(x1 - x0 + 1); ++ij) {
-    SPDR = (color1 >> 8U); // Place data to be sent on registers
-    do {
-    } while (!(SPSR & (1U << SPIF))); // wait for end of transmission
-    SPDR = color1;                    // Place data to be sent on registers
-    do {
-    } while (!(SPSR & (1U << SPIF))); // wait for end of transmission
-  }
-  for (uint16_t ij = 0; ij != (uint16_t)(x1 - x0 + 1); ++ij) {
-    SPDR = (color2 >> 8U); // Place data to be sent on registers
-    do {
-    } while (!(SPSR & (1U << SPIF))); // wait for end of transmission
-    SPDR = color2;                    // Place data to be sent on registers
-    do {
-    } while (!(SPSR & (1U << SPIF))); // wait for end of transmission
-  }
-  set(LCD_PORT, LCD_TFT_CS); // pull CS high to end communication
+// NOLINTNEXTLINE(misc-unused-parameters)
+__attribute__((always_inline)) inline static void lcd_look_to_the_cookie(uint8_t x0, uint8_t y0, uint8_t x1, uint16_t color1, uint16_t color2) {
+  SANE_ASSERT(LCD_INITIALIZED);
+  SANE_ASSERT(!SPILL_IS_OPEN);
+  spill_open();
+  LCD_TRUST_SET_ADDR(x0, y0, x1, y0 + 1);
+  for (uint16_t ij = 0; ij != (uint16_t)(x1 - x0 + 1); ++ij) { spill_send_16b_data(color1); }
+  for (uint16_t ij = 0; ij != (uint16_t)(x1 - x0 + 1); ++ij) { spill_send_16b_data(color2); }
+  spill_close();
 }
 
-void lcd_set_screen(uint16_t color) {
+__attribute__((always_inline)) inline static void lcd_set_screen(uint16_t color) {
+  SANE_ASSERT(LCD_INITIALIZED);
   lcd_block(0, 0, 159, 127, color);
 }
 
-void lcd_string(uint8_t x, uint8_t y, char const* str, uint16_t fg, uint16_t bg) {
+__attribute__((always_inline)) inline static void lcd_string(uint8_t x, uint8_t y, char const* str, uint16_t fg, uint16_t bg) {
+  SANE_ASSERT(LCD_INITIALIZED);
+  SANE_ASSERT(!SPILL_IS_OPEN);
   if (!str) { return; }
   char c;
   while ((c = (*(str++)))) {
@@ -184,3 +176,5 @@ void lcd_string(uint8_t x, uint8_t y, char const* str, uint16_t fg, uint16_t bg)
     x += 6;
   }
 }
+
+#endif // LCD_H
