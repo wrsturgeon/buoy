@@ -40,9 +40,9 @@ __attribute__((always_inline)) inline static void graphics_init(void) {
 
   lcd_set_screen(BACKGROUND);
   big_heart(HZMAX - PADDING, PADDING, RED);
-  big_B(HZMAX - PADDING, PADDING + 4 * (BIGASCII_W + 1), RED);
-  big_P(HZMAX - PADDING, PADDING + 5 * (BIGASCII_W + 1), RED);
-  big_M(HZMAX - PADDING, PADDING + 6 * (BIGASCII_W + 1), RED);
+  big_B(HZMAX - PADDING, PADDING + 5 * (BIGASCII_W + 1), RED);
+  big_P(HZMAX - PADDING, PADDING + 6 * (BIGASCII_W + 1), RED);
+  big_M(HZMAX - PADDING, PADDING + 7 * (BIGASCII_W + 1), RED);
 
   GPIO_PULL(PIN_LIT, HI); // Let there be light!
 
@@ -61,7 +61,7 @@ _Static_assert(ADC_BIT_WIDTH > 8);
   do {                                         \
     if ((++dotted) == NDOTTED) { dotted = 0; } \
   } while (0)
-__attribute__((always_inline)) inline static uint8_t display_and_check_heartbeat(uint16_t v) {
+__attribute__((always_inline)) inline static uint8_t display_and_check_heartbeat(uint16_t const v) {
   static uint8_t hist[128];
   static uint8_t runmean = 128;
   static uint8_t runpeak = 0;
@@ -70,6 +70,8 @@ __attribute__((always_inline)) inline static uint8_t display_and_check_heartbeat
   static uint8_t falling = 0; // if we recorded a heartbeat & are now waiting for this "bump" to finish
 
   uint8_t const vrsh = (v >> BIT_DISPARITY);
+
+  lcd_block(0, 0, 127, 0, BACKGROUND); // Erase the left edge
 
   if (vrsh > runpeak) {
     lcd_block(runpeak >> LOG2_COMPRESS_GRAPH, 0, runpeak >> LOG2_COMPRESS_GRAPH, 127, BACKGROUND); // Erase the last peak
@@ -111,29 +113,31 @@ __attribute__((always_inline)) inline static uint8_t display_and_check_heartbeat
   spi_close();
   INCR_DOTTED();
 
-  uint8_t tgt;
-  uint8_t pen = (hist[0] >> LOG2_COMPRESS_GRAPH);
-  for (uint8_t i = 0; i != 127; ++i) {
-    tgt = ((hist[i] = hist[i + 1]) >> LOG2_COMPRESS_GRAPH);
-    if (pen == tgt) {
-      lcd_look_to_the_cookie(pen, i, tgt, PULSELINE, BACKGROUND);
-    } else if (pen > tgt) {
-      lcd_look_to_the_cookie(tgt, i, pen - 1, PULSELINE, BACKGROUND);
-    } else {
-      lcd_look_to_the_cookie(pen + 1, i, tgt, PULSELINE, BACKGROUND);
+  { // Draw the main scrolling chart
+    uint8_t tgt;
+    uint8_t pen = (hist[0] >> LOG2_COMPRESS_GRAPH);
+    for (uint8_t i = 0; i != 127; ++i) {
+      tgt = ((hist[i] = hist[i + 1]) >> LOG2_COMPRESS_GRAPH);
+      if (pen == tgt) {
+        lcd_look_to_the_cookie(pen, i, tgt, PULSELINE, BACKGROUND);
+      } else if (pen > tgt) {
+        lcd_look_to_the_cookie(tgt, i, pen - 1, PULSELINE, BACKGROUND);
+      } else {
+        lcd_look_to_the_cookie(pen + 1, i, tgt, PULSELINE, BACKGROUND);
+      }
+      pen = tgt;
     }
-    pen = tgt;
-  }
 
-  hist[127] = vrsh;
+    hist[127] = vrsh;
 
-  tgt = (hist[127] >> LOG2_COMPRESS_GRAPH);
-  if (pen == tgt) {
-    lcd_block(pen, 127, tgt, 127, PULSELINE);
-  } else if (pen > tgt) {
-    lcd_block(tgt, 127, pen - 1, 127, PULSELINE);
-  } else {
-    lcd_block(pen + 1, 127, tgt, 127, PULSELINE);
+    tgt = (hist[127] >> LOG2_COMPRESS_GRAPH);
+    if (pen == tgt) {
+      lcd_block(pen, 127, tgt, 127, PULSELINE);
+    } else if (pen > tgt) {
+      lcd_block(tgt, 127, pen - 1, 127, PULSELINE);
+    } else {
+      lcd_block(pen + 1, 127, tgt, 127, PULSELINE);
+    }
   }
 
   if ((!falling) && ((v - runmean) > (((runpeak << BIT_DISPARITY) - runmean) >> 1U))) { // If we're more than halfway from mean to peak AND not already falling
@@ -147,24 +151,24 @@ __attribute__((always_inline)) inline static uint8_t display_and_check_heartbeat
 }
 
 __attribute__((always_inline)) inline static void update_bpm(uint16_t /* just in a hell of a case (>255) */ bpm) {
-  lcd_block(HZMAX - PADDING - BIGASCII_H + 1, PADDING + BIGASCII_W, HZMAX - PADDING, PADDING + 4 * (BIGASCII_W + 1) - 1, BACKGROUND);
+  lcd_block(HZMAX - PADDING - BIGASCII_H + 1, PADDING + BIGASCII_W, HZMAX - PADDING, PADDING + ((((4 << 1U) | 1U) * (BIGASCII_W + 1)) >> 1U) - 1, BACKGROUND);
   if (bpm < 1000) {
     if (bpm < 100) {
       if (bpm < 10) {
-        big_integer(bpm, HZMAX - PADDING, PADDING + 3 * (BIGASCII_W + 1), RED);
+        big_integer(bpm, HZMAX - PADDING, PADDING + ((((3 << 1U) | 1U) * (BIGASCII_W + 1)) >> 1U), RED);
       } else {
-        big_integer(bpm / 10U, HZMAX - PADDING, PADDING + 2 * (BIGASCII_W + 1), RED);
-        big_integer(bpm % 10U, HZMAX - PADDING, PADDING + 3 * (BIGASCII_W + 1), RED);
+        big_integer(bpm / 10U, HZMAX - PADDING, PADDING + ((((2 << 1U) | 1U) * (BIGASCII_W + 1)) >> 1U), RED);
+        big_integer(bpm % 10U, HZMAX - PADDING, PADDING + ((((3 << 1U) | 1U) * (BIGASCII_W + 1)) >> 1U), RED);
       }
     } else {
-      big_integer(bpm / 100U, HZMAX - PADDING, PADDING + BIGASCII_W + 1, RED);
-      big_integer((bpm / 10U) % 10U, HZMAX - PADDING, PADDING + 2 * (BIGASCII_W + 1), RED);
-      big_integer(bpm % 10U, HZMAX - PADDING, PADDING + 3 * (BIGASCII_W + 1), RED);
+      big_integer(bpm / 100U, HZMAX - PADDING, PADDING + ((((1 << 1U) | 1U) * (BIGASCII_W + 1)) >> 1U), RED);
+      big_integer((bpm / 10U) % 10U, HZMAX - PADDING, PADDING + ((((2 << 1U) | 1U) * (BIGASCII_W + 1)) >> 1U), RED);
+      big_integer(bpm % 10U, HZMAX - PADDING, PADDING + ((((3 << 1U) | 1U) * (BIGASCII_W + 1)) >> 1U), RED);
     }
   } else {
     big_question(HZMAX - PADDING, PADDING + BIGASCII_W + 1, RED);
-    big_question(HZMAX - PADDING, PADDING + 2 * (BIGASCII_W + 1), RED);
-    big_question(HZMAX - PADDING, PADDING + 3 * (BIGASCII_W + 1), RED);
+    big_question(HZMAX - PADDING, PADDING + ((((2 << 1U) | 1U) * (BIGASCII_W + 1)) >> 1U), RED);
+    big_question(HZMAX - PADDING, PADDING + ((((3 << 1U) | 1U) * (BIGASCII_W + 1)) >> 1U), RED);
   }
 }
 
