@@ -11,8 +11,6 @@
 
 #include <soc/spi_reg.h>
 
-#include <stdio.h>
-
 #define SPIN 2 // HSPI
 #define SPI_MODE 0
 

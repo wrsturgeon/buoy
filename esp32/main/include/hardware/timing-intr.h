@@ -12,8 +12,6 @@
 #include <soc/timer_group_reg.h>
 #include <xtensa/xtensa_api.h>
 
-#include <stdio.h>
-
 #define F_CPU 240000000 // 240MHz
 #define F_APB 80000000  //  80MHz
 
