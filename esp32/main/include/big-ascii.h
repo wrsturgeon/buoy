@@ -120,15 +120,16 @@ IMPLFN(0) {
 }
 
 IMPLFN(1) {
-  for (uint8_t i = 0; i != 9; ++i) {
+  for (uint8_t i = 1; i != 9; ++i) {
     for (uint8_t j = 3; j != 5; ++j) {
       lcd_pixel(x - i, y + j, color);
       lcd_pixel(x - i, y + j, color);
     }
   }
-  lcd_pixel(x - 1, y + 1, color);
-  lcd_pixel(x, y + 2, color);
-  lcd_pixel(x - 8, y, color);
+  lcd_pixel(x - 1, y + 2, color);
+  lcd_pixel(x, y + 3, color);
+  lcd_pixel(x, y + 4, color);
+  // lcd_pixel(x - 8, y, color);
   lcd_pixel(x - 8, y + 1, color);
   lcd_pixel(x - 8, y + 2, color);
   lcd_pixel(x - 8, y + 5, color);
@@ -368,7 +369,7 @@ IMPLFN(9) {
   lcd_pixel(x, y + 3, color);
   lcd_pixel(x, y + 4, color);
   lcd_pixel(x, y + 5, color);
-  lcd_pixel(x, y + 6, color);
+  // lcd_pixel(x, y + 6, color);
   lcd_pixel(x - 1, y, color);
   lcd_pixel(x - 1, y + 1, color);
   lcd_pixel(x - 1, y + 5, color);

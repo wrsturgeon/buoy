@@ -10,7 +10,9 @@
 
 #define VISIBLE_SETUP 0 // 0: no; 1: yes
 
+#if USE_BUZZER
 #define PIN_BUZZER FEATHER_A1
+#endif // USE_BUZZER
 
 #define BACKGROUND WHITE
 #define PULSELINE RED
@@ -44,7 +46,9 @@ __attribute__((always_inline)) inline static void graphics_init(void) {
 
   GPIO_PULL(PIN_LIT, HI); // Let there be light!
 
+#if USE_BUZZER
   GPIO_ENABLE_OUTPUT(PIN_BUZZER);
+#endif // USE_BUZZER
 
 #ifndef NDEBUG
   GRAPHICS_READY = 1;
@@ -92,7 +96,9 @@ __attribute__((always_inline)) inline static uint8_t display_and_check_heartbeat
     ++runmean;
   } else if (vrsh < runmean) {
     falling = 0;
+#if USE_BUZZER
     GPIO_PULL(PIN_BUZZER, LO);
+#endif // USE_BUZZER
     if ((~runmean) & ((1ULL << LOG2_COMPRESS_GRAPH) - 1U)) { lcd_block((runmean >> LOG2_COMPRESS_GRAPH), 0, (runmean >> LOG2_COMPRESS_GRAPH), 127, BACKGROUND); }
     --runmean;
   }
@@ -132,13 +138,15 @@ __attribute__((always_inline)) inline static uint8_t display_and_check_heartbeat
 
   if ((!falling) && ((v - runmean) > (((runpeak << BIT_DISPARITY) - runmean) >> 1U))) { // If we're more than halfway from mean to peak AND not already falling
     falling = 1;
+#if USE_BUZZER
     GPIO_PULL(PIN_BUZZER, HI);
+#endif // USE_BUZZER
     return 1;
   }
   return 0;
 }
 
-static void update_bpm(uint16_t /* just in a hell of a case (>255) */ bpm) {
+__attribute__((always_inline)) inline static void update_bpm(uint16_t /* just in a hell of a case (>255) */ bpm) {
   lcd_block(HZMAX - PADDING - BIGASCII_H + 1, PADDING + BIGASCII_W, HZMAX - PADDING, PADDING + 4 * (BIGASCII_W + 1) - 1, BACKGROUND);
   if (bpm < 1000) {
     if (bpm < 100) {

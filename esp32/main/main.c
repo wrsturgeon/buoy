@@ -1,9 +1,10 @@
 //%%%%%%%%%%%%%%%% CONFIGURABLE PARAMETERS:
-#define NDEBUG 1
-#define SCREEN_FLIPPED_OVER_MCU 1 // Whether the screen is nicely aligned next to the ESP32 (=0) or flipped to lay on top of it (=1)
-#define LOG2_CYCLES_PER_SECOND 5U
-#define LOG2_ADC_SAMPLES 0U // Set <= 4 so we use at most (2^4=)16 12-bit numbers and a 16-bit sum is juuuuust guaranteed not to overflow
-#define LOG2_HEARTBEAT_SAMPLES 4U
+#define NDEBUG 1                  // Boolean macro
+#define USE_BUZZER 0              // Boolean macro
+#define SCREEN_FLIPPED_OVER_MCU 0 // Whether the screen is nicely aligned next to the ESP32 (=0) or flipped to lay on top of it (=1)
+#define LOG2_CYCLES_PER_SECOND 5U // e.g. `5U` -> (2^5=)32 cycles per second
+#define LOG2_ADC_SAMPLES 0U       // Set <= 4 so we use at most (2^4=)16 12-bit numbers and a 16-bit sum is juuuuust guaranteed not to overflow
+#define LOG2_HEARTBEAT_SAMPLES 4U // Also <= 4: how many heartbeats to remember in BPM calculation
 //%%%%%%%%%%%%%%%% END CONFIGURABLE PARAMETERS
 
 #define N_CYCLES_PER_SECOND (1ULL << LOG2_CYCLES_PER_SECOND)
@@ -28,6 +29,11 @@
 
 #if PRESCALE_WHOLE_ENCHILADA > (1ULL << (16U + 32U))
 #error Prescaler must not be so ridiculously high as to impact performance
+#endif
+
+#define BPM_NUMERATOR (60ULL << (LOG2_CYCLES_PER_SECOND + LOG2_HEARTBEAT_SAMPLES))
+#if BPM_NUMERATOR >= (1ULL << 16U)
+#error BPM_NUMERATOR has to fit into a 16-bit unsigned integer
 #endif
 
 #include <stdint.h>
@@ -61,12 +67,13 @@ static prescale_overflow_t prescale_overflow_next = PRESCALE_OVERFLOW_PERIOD;
 static uint16_t adc_sample_vector[N_ADC_SAMPLES];
 static uint16_t heartbeat_sample_vector[N_HEARTBEAT_SAMPLES];
 static uint32_t this_tick = -1;
+static uint32_t this_cycle = -1;
 static uint8_t heartbeat_index; // Initial position doesn't matter since it's cyclic
 
-__attribute__((always_inline)) inline static uint16_t time_between_beats(uint32_t const now) {
-  static uint32_t last; // Initial value doesn't matter (wrong whatever it is and gone in a few seconds)
+__attribute__((always_inline)) inline static uint16_t cycles_between_beats(void) {
+  static uint32_t last = 0; // Initial value doesn't matter (wrong whatever it is and gone in a few seconds)
   uint32_t const lastlast = last;
-  return (last = now) - lastlast;
+  return (last = this_cycle) - lastlast;
 }
 
 __attribute__((always_inline)) inline static uint16_t adc_mean(void) {
@@ -74,43 +81,26 @@ __attribute__((always_inline)) inline static uint16_t adc_mean(void) {
 
   uint16_t sum = 0;
 
-#pragma GCC unroll 64
+#pragma GCC unroll 16
   for (uint8_t i = 0; i != N_ADC_SAMPLES; ++i) { sum += adc_sample_vector[i]; }
 
   return (sum >> LOG2_ADC_SAMPLES);
 }
 
-__attribute__((always_inline)) inline static uint16_t heartbeat_mean(void) {
-  uint16_t sum = 0;
-
-#pragma GCC unroll 64
-  for (uint8_t i = 0; i != N_HEARTBEAT_SAMPLES; ++i) { sum += heartbeat_sample_vector[i]; }
-
-  return (sum >> LOG2_HEARTBEAT_SAMPLES);
-}
-
 __attribute__((always_inline)) inline static void once_every_tick(void) {
-  static uint8_t index;
-  adc_sample_vector[MASK_ADC_FULL & ++index] = adc_poll();
+  adc_sample_vector[MASK_ADC_FULL & this_tick] = adc_poll();
 }
 
 __attribute__((always_inline)) inline static void once_every_cycle(void) {
   if (display_and_check_heartbeat(adc_mean())) {
-    heartbeat_sample_vector[heartbeat_index] = time_between_beats(this_tick);
+    heartbeat_sample_vector[heartbeat_index] = cycles_between_beats();
     if (N_HEARTBEAT_SAMPLES == ++heartbeat_index) { heartbeat_index = 0; }
-    // uint16_t mean;
-    // {
-    //   uint32_t sum = 0;
-    //   for (uint16_t i = 0; i < (1U << LG_HBUF); ++i) { sum += cbuf_get_uint16_16(i, &heartbuf); }
-    //   mean = (sum >> LG_HBUF);
-    // }
-    // // We want an operation s.t.
-    // // (X) / (sec / 62,500) = beats / minute
-    // // 62,500 X / sec = beats / (60 sec)
-    // // 3,750,000 X = beats
-    // // X = beats / 3,750,000
-    // // and 3,750,000 >> 6 fits within 16b (58,593.75)
-    // update_bpm(58594U / (mean >> 6));
+
+    uint16_t sum = 0;
+#pragma GCC unroll 16
+    for (uint8_t i = 0; i != N_HEARTBEAT_SAMPLES; ++i) { sum += heartbeat_sample_vector[i]; }
+
+    if (sum) { update_bpm((BPM_NUMERATOR + (sum >> 1U)) / sum); } // BPM_NUMERATOR is <<'d by LOG2_HEARTBEAT_SAMPLES instead of dividing the denominator to make a sum into a mean
   }
 }
 
@@ -136,15 +126,16 @@ void app_main(void) {
       } while (timing_get_clock_32b() < this_tick);
     }
 
-    // SANE_ASSERT((now - this_tick) < 16U); // subtraction into a signed integer so we don't always fail straddling overflow
-
 #if PRESCALE_OVERFLOW
     if (prescale_overflow_next != ++prescale_overflow) { continue; }
     prescale_overflow_next += PRESCALE_OVERFLOW_PERIOD;
 #endif // PRESCALE_OVERFLOW
 
     once_every_tick();
-    if (!(MASK_ADC_FULL & this_tick)) { once_every_cycle(); }
+    if (!(MASK_ADC_FULL & this_tick)) {
+      ++this_cycle;
+      once_every_cycle();
+    }
 
   } while (1);
 }

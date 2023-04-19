@@ -16,6 +16,8 @@ _Static_assert((ADC_ATTENUATION & 3U) == ADC_ATTENUATION);
 #define ADC_CLK_DIV 2
 #define ADC_BIT_WIDTH 12
 #define ADC_PIN 36
+#define ADC_INVERT 0
+
 #define ADC_CHANNEL PASTE(PASTE(ADC1_GPIO, ADC_PIN), _CHANNEL)
 #define ADC_IO_REG PASTE(PASTE(IO_MUX_GPIO, ADC_PIN), _REG)
 #define RTC_IO_CHANNEL PASTE(PASTE(RTCIO_GPIO, ADC_PIN), _CHANNEL)
@@ -102,7 +104,7 @@ __attribute__((always_inline)) inline static void adc_disable_hall_sensor(void) 
 
 __attribute__((always_inline)) inline static void adc_disable_amp(void) {
   REG(SENS_SAR_MEAS_WAIT2_REG) &= ~SENS_FORCE_XPD_AMP_M;
-  REG(SENS_SAR_MEAS_WAIT2_REG) |= (SENS_FORCE_XPD_AMP_PD << SENS_FORCE_XPD_AMP_S);
+  REG(SENS_SAR_MEAS_WAIT2_REG) |= (SENS_FORCE_XPD_AMP_PD << SENS_FORCE_XPD_AMP_S); // PD: power down
   REG(SENS_SAR_MEAS_CTRL_REG) &= ~(SENS_AMP_RST_FB_FSM_M | SENS_AMP_SHORT_REF_FSM_M | SENS_AMP_SHORT_REF_GND_FSM_M);
   force_32b_clear_and_set(REG_PTR(SENS_SAR_MEAS_WAIT1_REG), SENS_SAR_AMP_WAIT1_M, 1ULL << SENS_SAR_AMP_WAIT1_S);
   force_32b_clear_and_set(REG_PTR(SENS_SAR_MEAS_WAIT1_REG), SENS_SAR_AMP_WAIT2_M, 1ULL << SENS_SAR_AMP_WAIT2_S);
@@ -113,7 +115,13 @@ __attribute__((always_inline)) inline static void adc_set_attenuation(void) {
   adc_rtc_init_gpio();
 
   REG(SENS_SAR_MEAS_CTRL2_REG) &= ~SENS_SAR1_DAC_XPD_FSM_M; // Decouple DAC from ADC
-  REG(SENS_SAR_READ_CTRL_REG) |= SENS_SAR1_DATA_INV_M;      // Invert data
+  REG(SENS_SAR_READ_CTRL_REG)
+#if ADC_INVERT // Inversions themselves are flipped: for whatever reason, this ADC channel needs to be inverted to be upright
+      &= ~
+#else  // ADC_INVERT
+      |=
+#endif // ADC_INVERT
+         SENS_SAR1_DATA_INV_M;
   force_32b_clear_and_set(REG_PTR(SENS_SAR_READ_CTRL_REG), SENS_SAR1_CLK_DIV_M, (ADC_CLK_DIV << SENS_SAR1_CLK_DIV_S));
   adc_disable_hall_sensor();
   adc_disable_amp();
