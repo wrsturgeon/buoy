@@ -62,7 +62,7 @@ static prescale_overflow_t prescale_overflow_next = PRESCALE_OVERFLOW_PERIOD;
 #include "hardware/timing.h"
 #include "sane-assert.h"
 
-// Include just enough FreeRTOS to feed the watchdog timer
+// Include just enough FreeRTOS to feed the watchdog timer and enable WiFi (pinned to the second CPU core)
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
@@ -106,8 +106,7 @@ __attribute__((always_inline)) inline static void once_every_cycle(void) {
   }
 }
 
-//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% FreeRTOS task instead of `main` (so we can feed the watchdog), but using no other FreeRTOS features.
-void app_main(void) {
+void non_wifi_tasks(void* /* unused */) {
 
   // Initialize modules
   graphics_init();
@@ -140,4 +139,13 @@ void app_main(void) {
     }
 
   } while (1);
+}
+
+void wifi_tasks(void* /* unused */) {
+  // TODO(wrsturgeon)
+}
+
+void app_main(void) {
+  xTaskCreatePinnedToCore(non_wifi_tasks, "Non-WiFi-enabled tasks", -1, 0, 2, 0, APP_CPU_NUM);
+  xTaskCreatePinnedToCore(wifi_tasks, "WiFi-enabled tasks", -1, 0, 2, 0, PRO_CPU_NUM);
 }
