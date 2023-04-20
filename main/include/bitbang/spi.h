@@ -24,9 +24,11 @@
 // https://cdn-shop.adafruit.com/datasheets/ST7735R_V0.2.pdf
 // #define PLAY_IT_SAFE
 #ifdef PLAY_IT_SAFE
-#define POSTCMD_DELAY(...) ets_delay_us(__VA_ARGS__);
+#define MAYBE_WAIT(...) ets_delay_us(__VA_ARGS__)
+#define DEFINITELY_WAIT(...)
 #else
-#define POSTCMD_DELAY(...)
+#define MAYBE_WAIT(...)
+#define DEFINITELY_WAIT(...) ets_delay_us(__VA_ARGS__)
 #endif
 
 #ifndef NDEBUG
@@ -143,7 +145,12 @@ __attribute__((always_inline)) inline static void spi_send_16b(uint16_t msg) {
     spi_send_8b(CMD);                              \
     GPIO_PULL(PIN_TDC, HI);                        \
     SPI_MOSI_##ARGC(__VA_ARGS__);                  \
-    POSTCMD_DELAY(WAIT * 1000U)                    \
+    MAYBE_WAIT(WAIT * 1000U);                      \
+  } while (0)
+#define SPI_COMMAND_WAIT(CMD, ARGC, WAIT, ...) \
+  do {                                         \
+    SPI_COMMAND(CMD, ARGC, WAIT, __VA_ARGS__); \
+    DEFINITELY_WAIT(WAIT * 1000U);             \
   } while (0)
 
 #endif // BITBANG_SPI_H

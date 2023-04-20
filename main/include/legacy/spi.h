@@ -28,7 +28,7 @@ void spi_pre_transfer_callback(spi_transaction_t* t) {
 #ifndef NDEBUG
 static uint8_t SPI_INITIALIZED = 0;
 static uint8_t SPI_COMM_OPEN = 0;
-#endif
+#endif // NDEBUG
 
 static spi_bus_config_t const SPI_BUS_CONFIG = {
     .mosi_io_num = SPI(MOSI),
@@ -68,7 +68,7 @@ __attribute__((always_inline)) inline static void spi_init(void) {
 #ifndef NDEBUG
   SANE_ASSERT(!SPI_INITIALIZED);
   SPI_INITIALIZED = 1;
-#endif
+#endif // NDEBUG
 
   ESP_ERROR_CHECK(spi_bus_initialize(SPI(BUS), &SPI_BUS_CONFIG, NO_DMA));
 
@@ -95,7 +95,7 @@ __attribute__((always_inline)) inline static void spi_init(void) {
 __attribute__((always_inline)) inline static void spi_open_comm(void) {
 #ifndef NDEBUG
   SPI_COMM_OPEN = 1;
-#endif
+#endif // NDEBUG
   // TODO(wrsturgeon): REENABLE vvv
   // GPIO_PULL_LO(SPI(CS));
 }
@@ -103,7 +103,7 @@ __attribute__((always_inline)) inline static void spi_open_comm(void) {
 __attribute__((always_inline)) inline static void spi_close_comm(void) {
 #ifndef NDEBUG
   SPI_COMM_OPEN = 0;
-#endif
+#endif // NDEBUG
   // TODO(wrsturgeon): REENABLE vvv
   // GPIO_PULL_HI(SPI(CS));
 }

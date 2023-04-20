@@ -107,28 +107,28 @@ __attribute__((always_inline)) inline static void st7735_init(void) {
 
   // SPI command sequence from ESE350 ST7735 library (almost verbatim):
   spi_open();
-  SPI_COMMAND(CMD_SWRESET, 0, 150);                                                                                                // Software reset. This first one is needed because of the RC reset.
-  SPI_COMMAND(CMD_SLPOUT, 0, 500);                                                                                                 // Exit sleep mode
-  SPI_COMMAND(CMD_FRMCTR1, 3, 0, 0x01, 0x2C, 0x2D);                                                                                // Frame rate control 1
-  SPI_COMMAND(CMD_FRMCTR2, 3, 0, 0x01, 0x2C, 0x2D);                                                                                // Frame rate control 2
-  SPI_COMMAND(CMD_FRMCTR3, 6, 0, 0x01, 0x2C, 0x2D, 0x01, 0x2C, 0x2D);                                                              // Frame rate control 3
-  SPI_COMMAND(CMD_INVCTR, 1, 0, 0x07);                                                                                             // Display inversion
-  SPI_COMMAND(CMD_PWCTR1, 3, 5, 0x0A, 0x02, 0x84);                                                                                 // Power control 1
-  SPI_COMMAND(CMD_PWCTR2, 1, 5, 0xC5);                                                                                             // Power control 2
-  SPI_COMMAND(CMD_PWCTR3, 2, 5, 0x0A, 0x00);                                                                                       // Power control 3
-  SPI_COMMAND(CMD_PWCTR4, 2, 5, 0x8A, 0x2A);                                                                                       // Power control 4
-  SPI_COMMAND(CMD_PWCTR5, 2, 5, 0x8A, 0xEE);                                                                                       // Power control 5
-  SPI_COMMAND(CMD_VMCTR1, 1, 0, 0x0E);                                                                                             // Vcom control 1
-  SPI_COMMAND(CMD_INVOFF, 0, 0);                                                                                                   // Inversion off
-  SPI_COMMAND(CMD_MADCTL, 1, 0, 0xC8);                                                                                             // Memory Access control
-  SPI_COMMAND(CMD_COLMOD, 1, 0, 0x05);                                                                                             // Interface pixel format
-  SPI_COMMAND(CMD_CASET, 4, 0, 0x00, 0x00, 0x00, 0x7F);                                                                            // Column
-  SPI_COMMAND(CMD_RASET, 4, 0, 0x00, 0x00, 0x00, 0x9F);                                                                            // Page
-  SPI_COMMAND(CMD_GMCTRP1, 16, 0, 0x02, 0x1C, 0x07, 0x12, 0x37, 0x32, 0x29, 0x2D, 0x29, 0x25, 0x2B, 0x39, 0x00, 0x01, 0x03, 0x10); // Positive Gamma
-  SPI_COMMAND(CMD_GMCTRN1, 16, 0, 0x03, 0x1D, 0x07, 0x06, 0x2E, 0x2C, 0x29, 0x2D, 0x2E, 0x2E, 0x37, 0x3F, 0x00, 0x00, 0x02, 0x10); // Negative Gamma
-  SPI_COMMAND(CMD_NORON, 0, 10);                                                                                                   // Normal display on
-  SPI_COMMAND(CMD_DISPON, 0, 100);                                                                                                 // Set display on
-  SPI_COMMAND(CMD_MADCTL, 1, 10, MADCTL_MX | MADCTL_MV | MADCTL_RGB);                                                              // Default to rotation 3
+  SPI_COMMAND_WAIT(CMD_SWRESET, 0, 150);                                                                                                // Software reset. This first one is needed because of the RC reset.
+  SPI_COMMAND_WAIT(CMD_SLPOUT, 0, 500);                                                                                                 // Exit sleep mode
+  SPI_COMMAND_WAIT(CMD_FRMCTR1, 3, 0, 0x01, 0x2C, 0x2D);                                                                                // Frame rate control 1
+  SPI_COMMAND_WAIT(CMD_FRMCTR2, 3, 0, 0x01, 0x2C, 0x2D);                                                                                // Frame rate control 2
+  SPI_COMMAND_WAIT(CMD_FRMCTR3, 6, 0, 0x01, 0x2C, 0x2D, 0x01, 0x2C, 0x2D);                                                              // Frame rate control 3
+  SPI_COMMAND_WAIT(CMD_INVCTR, 1, 0, 0x07);                                                                                             // Display inversion
+  SPI_COMMAND_WAIT(CMD_PWCTR1, 3, 5, 0x0A, 0x02, 0x84);                                                                                 // Power control 1
+  SPI_COMMAND_WAIT(CMD_PWCTR2, 1, 5, 0xC5);                                                                                             // Power control 2
+  SPI_COMMAND_WAIT(CMD_PWCTR3, 2, 5, 0x0A, 0x00);                                                                                       // Power control 3
+  SPI_COMMAND_WAIT(CMD_PWCTR4, 2, 5, 0x8A, 0x2A);                                                                                       // Power control 4
+  SPI_COMMAND_WAIT(CMD_PWCTR5, 2, 5, 0x8A, 0xEE);                                                                                       // Power control 5
+  SPI_COMMAND_WAIT(CMD_VMCTR1, 1, 0, 0x0E);                                                                                             // Vcom control 1
+  SPI_COMMAND_WAIT(CMD_INVOFF, 0, 0);                                                                                                   // Inversion off
+  SPI_COMMAND_WAIT(CMD_MADCTL, 1, 0, 0xC8);                                                                                             // Memory Access control
+  SPI_COMMAND_WAIT(CMD_COLMOD, 1, 0, 0x05);                                                                                             // Interface pixel format
+  SPI_COMMAND_WAIT(CMD_CASET, 4, 0, 0x00, 0x00, 0x00, 0x7F);                                                                            // Column
+  SPI_COMMAND_WAIT(CMD_RASET, 4, 0, 0x00, 0x00, 0x00, 0x9F);                                                                            // Page
+  SPI_COMMAND_WAIT(CMD_GMCTRP1, 16, 0, 0x02, 0x1C, 0x07, 0x12, 0x37, 0x32, 0x29, 0x2D, 0x29, 0x25, 0x2B, 0x39, 0x00, 0x01, 0x03, 0x10); // Positive Gamma
+  SPI_COMMAND_WAIT(CMD_GMCTRN1, 16, 0, 0x03, 0x1D, 0x07, 0x06, 0x2E, 0x2C, 0x29, 0x2D, 0x2E, 0x2E, 0x37, 0x3F, 0x00, 0x00, 0x02, 0x10); // Negative Gamma
+  SPI_COMMAND_WAIT(CMD_NORON, 0, 10);                                                                                                   // Normal display on
+  SPI_COMMAND_WAIT(CMD_DISPON, 0, 100);                                                                                                 // Set display on
+  SPI_COMMAND_WAIT(CMD_MADCTL, 1, 10, MADCTL_MX | MADCTL_MV | MADCTL_RGB);                                                              // Default to rotation 3
   spi_close();
 
 #ifndef NDEBUG

@@ -19,7 +19,7 @@
 #ifndef NDEBUG
 static uint8_t SPILL_IS_SET_UP = 0;
 static uint8_t SPILL_IS_OPEN = 0;
-#endif
+#endif // NDEBUG
 
 // SPI modes: Manual p. 124
 #if (SPI_MODE == 0)
