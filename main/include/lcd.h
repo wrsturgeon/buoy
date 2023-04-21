@@ -118,6 +118,8 @@ __attribute__((always_inline)) inline static void lcd_circle(uint8_t x0, uint8_t
   circle_remainder_recursive(x0, y0, x0, y1, rsq, color);
 }
 
+/*
+
 static void lcd_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t c) {
   SANE_ASSERT(ST7735_READY);
   SANE_ASSERT(!SPI_IS_OPEN);
@@ -155,6 +157,8 @@ static void lcd_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t c)
     }
   }
 }
+
+*/
 
 // Vertical line.
 __attribute__((always_inline)) inline static void lcd_look_to_the_cookie(uint8_t x0, uint8_t y0, uint8_t x1, uint16_t color1, uint16_t color2) {

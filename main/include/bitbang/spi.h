@@ -5,6 +5,7 @@
 #include "hardware/pins.h"
 #include "sane-assert.h"
 
+#include <esp_attr.h>
 #include <rom/ets_sys.h>
 
 #if SCREEN_FLIPPED_OVER_MCU
@@ -83,7 +84,7 @@ __attribute__((always_inline)) inline static void spi_send_bit(uint8_t bit) {
   GPIO_PULL(PIN_SCK, LO);
 }
 
-__attribute__((always_inline)) inline static void spi_send_8b(uint8_t msg) {
+IRAM_ATTR static void spi_send_8b(uint8_t msg) {
   spi_send_bit(msg & 0b10000000);
   spi_send_bit(msg & 0b01000000);
   spi_send_bit(msg & 0b00100000);

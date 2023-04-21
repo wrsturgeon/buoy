@@ -1,8 +1,8 @@
 //%%%%%%%%%%%%%%%% CONFIGURABLE PARAMETERS:
 // #define NDEBUG 1                  // Boolean macro
-#define USE_BUZZER 0              // Boolean macro
+#define USE_BUZZER 1              // Boolean macro
 #define SCREEN_FLIPPED_OVER_MCU 0 // Whether the screen is nicely aligned next to the ESP32 (=0) or flipped to lay on top of it (=1)
-#define LOG2_CYCLES_PER_SECOND 6U // e.g. `5U` -> (2^5=)32 cycles per second
+#define LOG2_CYCLES_PER_SECOND 5U // e.g. `5U` -> (2^5=)32 cycles per second
 #define LOG2_ADC_SAMPLES 0U       // Set <= 4 so we use at most (2^4=)16 12-bit numbers and a 16-bit sum is juuuuust guaranteed not to overflow
 #define LOG2_HEARTBEAT_SAMPLES 4U // Also <= 4: how many heartbeats to remember in BPM calculation
 //%%%%%%%%%%%%%%%% END CONFIGURABLE PARAMETERS
@@ -60,12 +60,8 @@ static prescale_overflow_t prescale_overflow_next = PRESCALE_OVERFLOW_PERIOD;
 #include "graphics.h"
 #include "hardware/adc.h"
 #include "hardware/timing.h"
+#include "not-bare-metal/tasks.h"
 #include "sane-assert.h"
-
-// Include just enough FreeRTOS to feed the watchdog timer and enable WiFi (pinned to the second CPU core)
-#include <freertos/FreeRTOS.h>
-#include <freertos/projdefs.h>
-#include <freertos/task.h>
 
 static uint16_t adc_sample_vector[N_ADC_SAMPLES];
 static uint16_t heartbeat_sample_vector[N_HEARTBEAT_SAMPLES];
@@ -94,8 +90,9 @@ __attribute__((always_inline)) inline static void once_every_tick(void) {
   adc_sample_vector[MASK_ADC_FULL & this_tick] = adc_poll();
 }
 
+_Static_assert(ADC_BIT_WIDTH > 8);
 __attribute__((always_inline)) inline static void once_every_cycle(void) {
-  if (display_and_check_heartbeat(adc_mean())) {
+  if (display_and_check_heartbeat(adc_mean() >> (ADC_BIT_WIDTH - 8U))) {
     heartbeat_sample_vector[heartbeat_index] = cycles_between_beats();
     if (N_HEARTBEAT_SAMPLES == ++heartbeat_index) { heartbeat_index = 0; }
 
@@ -119,7 +116,7 @@ void non_wifi_tasks(void* /* unused */) {
 
     // TODO(wrsturgeon): timer interrupts (will also fix ADC sampling bias!)
     while (timing_get_clock_32b() < ++this_tick) {
-      // printf("Ahead of schedule\r\n");
+      // Ahead of schedule!
 
       vTaskDelay(1); // Reset the watchdog so it doesn't fucking kill us every two seconds
       // (but let it kill us if we're very behind schedule and we never satisfy the condition above)
@@ -142,41 +139,11 @@ void non_wifi_tasks(void* /* unused */) {
   } while (1);
 }
 
-void wifi_tasks(void* /* unused */) {
-  do {
-    // TODO(wrsturgeon)
-    vTaskDelay(-1);
-  } while (1);
-}
-
 void app_main(void) {
-  BaseType_t return_code;
 
-  {
-    BaseType_t const core = xPortGetCoreID();
-    printf("%%%%%%%% Starting on the %s CPU core (=%u)\r\n", ((core == PRO_CPU_NUM) ? "PRO" : ((core == APP_CPU_NUM) ? "APP" : "[UNRECOGNIZED]")), core);
-  }
+  start_freertos_tasks(non_wifi_tasks);
 
-  // Start non-WiFi-enabled tasks
-  printf("%%%%%%%% Starting non-WiFi-enabled tasks...\r\n");
-  switch (return_code = xTaskCreatePinnedToCore(non_wifi_tasks, "Non-WiFi-enabled tasks", CONFIG_ESP_MAIN_TASK_STACK_SIZE, 0, 2, 0, APP_CPU_NUM)) {
-  case pdPASS: break;
-  default: // NOLINTNEXTLINE(cert-err33-c)
-    fprintf(stderr, "`xTaskCreatePinnedToCore(non_wifi_tasks, ...` failed with code %d\r\n", return_code);
-    return;
-  }
-
-  // Start WiFi-enabled tasks
-  printf("%%%%%%%% Starting WiFi-enabled tasks...\r\n");
-  switch (return_code = xTaskCreatePinnedToCore(wifi_tasks, "WiFi-enabled tasks", CONFIG_ESP_MAIN_TASK_STACK_SIZE, 0, 2, 0, PRO_CPU_NUM)) {
-  case pdPASS: break;
-  default: // NOLINTNEXTLINE(cert-err33-c)
-    fprintf(stderr, "`xTaskCreatePinnedToCore(wifi_tasks, ...` failed with code %d\r\n", return_code);
-    return;
-  }
-
-  // Halt but don't return
-  printf("%%%%%%%% Ceding...\r\n");
+  // Halt, but don't return
   do {
     vTaskDelay(-1);
   } while (1);

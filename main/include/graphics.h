@@ -2,13 +2,15 @@
 #define GRAPHICS_H
 
 #include "big-ascii.h"
+#include "buffer.h"
 #include "hardware/adc.h" // for ADC_BIT_WIDTH
 #include "lcd.h"
 #include "sane-assert.h"
 
 #include <stdint.h>
 
-#define VISIBLE_SETUP 0 // 0: no; 1: yes
+#define VISIBLE_SETUP 0         // 0: no; 1: yes
+#define PEAK_AND_MEDIAN_LINES 1 // ^
 
 #if USE_BUZZER
 #define PIN_BUZZER FEATHER_A1
@@ -55,24 +57,26 @@ __attribute__((always_inline)) inline static void graphics_init(void) {
 #endif // NDEBUG
 }
 
-_Static_assert(ADC_BIT_WIDTH > 8);
-#define BIT_DISPARITY (ADC_BIT_WIDTH - 8)
 #define INCR_DOTTED()                          \
   do {                                         \
     if ((++dotted) == NDOTTED) { dotted = 0; } \
   } while (0)
-__attribute__((always_inline)) inline static uint8_t display_and_check_heartbeat(uint16_t const v) {
-  static uint8_t hist[128];
-  static uint8_t runmean = 128;
+__attribute__((always_inline)) inline static uint8_t display_and_check_heartbeat(uint8_t const vrsh) {
+  static buffer_t hist;
+  static uint8_t runmedian = 128;
   static uint8_t runpeak = 0;
+  static uint8_t falling = 0; // if we recorded a heartbeat & are now waiting for this "bump" to finish
+#if PEAK_AND_MEDIAN_LINES
   static uint8_t peakidx = 0;
   static uint8_t dotted = 0;
-  static uint8_t falling = 0; // if we recorded a heartbeat & are now waiting for this "bump" to finish
+#endif // PEAK_AND_MEDIAN_LINES
 
-  uint8_t const vrsh = (v >> BIT_DISPARITY);
+  buffer_push(vrsh, &hist);
 
   lcd_block(0, 0, 127, 0, BACKGROUND); // Erase the left edge
 
+#if PEAK_AND_MEDIAN_LINES
+  // Adjust & draw the green peak line
   if (vrsh > runpeak) {
     lcd_block(runpeak >> LOG2_COMPRESS_GRAPH, 0, runpeak >> LOG2_COMPRESS_GRAPH, 127, BACKGROUND); // Erase the last peak
     runpeak = vrsh;
@@ -80,44 +84,46 @@ __attribute__((always_inline)) inline static uint8_t display_and_check_heartbeat
   } else if (peakidx) {
     --peakidx;
   } else {
-    // Iterate & find the new peak (unfortunately)
+    // Iterate & find the new peak
     lcd_block(runpeak >> LOG2_COMPRESS_GRAPH, 0, runpeak >> LOG2_COMPRESS_GRAPH, 127, BACKGROUND); // Erase the last peak
-    runpeak = hist[0];
+    runpeak = buffer_get(0, &hist);
     peakidx = 0;
-    for (uint8_t i = 1; i != 128; ++i) {
-      if (hist[i] >= runpeak) {
-        runpeak = hist[i];
+    for (uint8_t i = 1; i != ST7735_H; ++i) {
+      if (buffer_get(i, &hist) >= runpeak) {
+        runpeak = buffer_get(i, &hist);
         peakidx = i;
       }
     }
   }
   lcd_block(runpeak >> LOG2_COMPRESS_GRAPH, 0, runpeak >> LOG2_COMPRESS_GRAPH, 127, PULSEPEAK); // Erase the last peak
 
-  if (vrsh > runmean) {
-    if (runmean & ((1ULL << LOG2_COMPRESS_GRAPH) - 1U)) { lcd_block((runmean >> LOG2_COMPRESS_GRAPH), 0, (runmean >> LOG2_COMPRESS_GRAPH), 127, BACKGROUND); }
-    ++runmean;
-  } else if (vrsh < runmean) {
+  // Adjust & draw the dotted median line
+  if (vrsh > runmedian) {
+    if (runmedian & ((1ULL << LOG2_COMPRESS_GRAPH) - 1U)) { lcd_block((runmedian >> LOG2_COMPRESS_GRAPH), 0, (runmedian >> LOG2_COMPRESS_GRAPH), 127, BACKGROUND); }
+    ++runmedian;
+  } else if (vrsh < runmedian) {
     falling = 0;
 #if USE_BUZZER
     GPIO_PULL(PIN_BUZZER, LO);
 #endif // USE_BUZZER
-    if ((~runmean) & ((1ULL << LOG2_COMPRESS_GRAPH) - 1U)) { lcd_block((runmean >> LOG2_COMPRESS_GRAPH), 0, (runmean >> LOG2_COMPRESS_GRAPH), 127, BACKGROUND); }
-    --runmean;
+    if ((~runmedian) & ((1ULL << LOG2_COMPRESS_GRAPH) - 1U)) { lcd_block((runmedian >> LOG2_COMPRESS_GRAPH), 0, (runmedian >> LOG2_COMPRESS_GRAPH), 127, BACKGROUND); }
+    --runmedian;
   }
   spi_open();
-  LCD_TRUST_SET_ADDR((runmean >> LOG2_COMPRESS_GRAPH), 0, (runmean >> LOG2_COMPRESS_GRAPH), 127);
-  for (uint16_t ij = 0; ij != 128; ++ij) {
+  LCD_TRUST_SET_ADDR((runmedian >> LOG2_COMPRESS_GRAPH), 0, (runmedian >> LOG2_COMPRESS_GRAPH), 127);
+  for (uint16_t ij = 0; ij != ST7735_H; ++ij) {
     spi_send_16b((!dotted) - 1);
     INCR_DOTTED();
   }
   spi_close();
   INCR_DOTTED();
+#endif // PEAK_AND_MEDIAN_LINES
 
   { // Draw the main scrolling chart
     uint8_t tgt;
-    uint8_t pen = (hist[0] >> LOG2_COMPRESS_GRAPH);
-    for (uint8_t i = 0; i != 127; ++i) {
-      tgt = ((hist[i] = hist[i + 1]) >> LOG2_COMPRESS_GRAPH);
+    uint8_t pen = (buffer_get(0, &hist) >> LOG2_COMPRESS_GRAPH);
+    for (uint8_t i = 0; i != ST7735_H; ++i) {
+      tgt = (buffer_get(i, &hist) >> LOG2_COMPRESS_GRAPH);
       if (pen == tgt) {
         lcd_look_to_the_cookie(pen, i, tgt, PULSELINE, BACKGROUND);
       } else if (pen > tgt) {
@@ -128,19 +134,17 @@ __attribute__((always_inline)) inline static uint8_t display_and_check_heartbeat
       pen = tgt;
     }
 
-    hist[127] = vrsh;
-
-    tgt = (hist[127] >> LOG2_COMPRESS_GRAPH);
-    if (pen == tgt) {
-      lcd_block(pen, 127, tgt, 127, PULSELINE);
-    } else if (pen > tgt) {
-      lcd_block(tgt, 127, pen - 1, 127, PULSELINE);
-    } else {
-      lcd_block(pen + 1, 127, tgt, 127, PULSELINE);
-    }
+    // tgt = (buffer_get(0, &hist) >> LOG2_COMPRESS_GRAPH);
+    // if (pen == tgt) {
+    //   lcd_block(pen, 127, tgt, 127, PULSELINE);
+    // } else if (pen > tgt) {
+    //   lcd_block(tgt, 127, pen - 1, 127, PULSELINE);
+    // } else {
+    //   lcd_block(pen + 1, 127, tgt, 127, PULSELINE);
+    // }
   }
 
-  if ((!falling) && ((v - runmean) > (((runpeak << BIT_DISPARITY) - runmean) >> 1U))) { // If we're more than halfway from mean to peak AND not already falling
+  if ((!falling) && ((vrsh - runmedian) > ((runpeak - runmedian) >> 1U))) { // If we're more than halfway from median to peak AND not already falling
     falling = 1;
 #if USE_BUZZER
     GPIO_PULL(PIN_BUZZER, HI);
@@ -166,7 +170,7 @@ __attribute__((always_inline)) inline static void update_bpm(uint16_t /* just in
       big_integer(bpm % 10U, HZMAX - PADDING, PADDING + ((((3 << 1U) | 1U) * (BIGASCII_W + 1)) >> 1U), RED);
     }
   } else {
-    big_question(HZMAX - PADDING, PADDING + BIGASCII_W + 1, RED);
+    big_question(HZMAX - PADDING, PADDING + ((((1 << 1U) | 1U) * (BIGASCII_W + 1)) >> 1U), RED);
     big_question(HZMAX - PADDING, PADDING + ((((2 << 1U) | 1U) * (BIGASCII_W + 1)) >> 1U), RED);
     big_question(HZMAX - PADDING, PADDING + ((((3 << 1U) | 1U) * (BIGASCII_W + 1)) >> 1U), RED);
   }

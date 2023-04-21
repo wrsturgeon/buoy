@@ -14,9 +14,6 @@
 
 #include <soc/timer_group_reg.h>
 
-#define F_CPU 240000000 // 240MHz
-#define F_APB 80000000  //  80MHz
-
 #define TIMG_N 0
 #define TIMER_N 0
 #define ARBITRARY_VALUE 1 // for clarity of intention

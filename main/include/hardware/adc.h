@@ -125,7 +125,7 @@ __attribute__((always_inline)) inline static void adc_set_attenuation(void) {
          SENS_SAR1_DATA_INV_M;
   force_32b_clear_and_set(REG_PTR(SENS_SAR_READ_CTRL_REG), SENS_SAR1_CLK_DIV_M, (ADC_CLK_DIV << SENS_SAR1_CLK_DIV_S));
   adc_disable_hall_sensor();
-  adc_disable_amp();
+  // adc_disable_amp();
 
   // adc_oneshot_ll_set_atten(ADC_UNIT_1, ADC_CHANNEL, ADC_ATTENUATION);
   REG(SENS_SAR_ATTEN1_REG) &= ~(3U << (ADC_CHANNEL << 1U));

@@ -63,6 +63,8 @@ IMPLFN(question) {
   lcd_pixel(x - 2, y + 1, color);
 }
 
+/*
+
 IMPLFN(lparen) {
   lcd_pixel(x, y + 5, color);
   lcd_pixel(x, y + 6, color);
@@ -104,6 +106,8 @@ IMPLFN(rparen) {
   lcd_pixel(x - 8, y, color);
   lcd_pixel(x - 8, y + 1, color);
 }
+
+*/
 
 IMPLFN(0) {
   // Symmetric in both dimensions
