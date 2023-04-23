@@ -21,10 +21,8 @@ Just run `make`. (This should install dependencies as well).
 ### Libraries
 None so far.
 
+**Disclaimer**: as noted above, the ESP32 manual is literally incomplete, and so if a module was not working after multiple hours of following the instructions and exhausting reasonable what-ifs, I would comb through an [ESP-IDF](https://github.com/espressif/esp-idf) implementation to see which registers were missing. None of their code survives in any form, and I thoroughly documented my code (unlike ESP-IDF!) to demonstrate understanding and help my future self out.
+
 ### Demonstration
 Here is the current state of the project: https://youtube.com/shorts/ZsG0fzAm2Nc
 We have gotten the heart beat monitor to work properly with a feather in baremetal on the LCD, and are currently working on adding a pulse oximeter as the next feature!
-
-**Disclaimer**: as noted above, the ESP32 manual is literally incomplete, and so if a module was not working after multiple hours of following the instructions and exhausting reasonable what-ifs, I would comb through an [ESP-IDF](https://github.com/espressif/esp-idf) implementation to see which registers were missing. None of their code survives in any form, and I thoroughly documented my code (unlike ESP-IDF!) to demonstrate understanding and help my future self out.
-
-
