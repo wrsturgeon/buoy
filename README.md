@@ -1,5 +1,9 @@
 # The _Heart_-Throbs ❤️
-## UPenn ESE 350 Final Project
+UPenn ESE 350 Final Project\
+Will Sturgeon & Mostafa Afr
+
+### About
+This is a wireless finger clip that is able to take in a patient's heart rate, pulse oximetry, and blood pressure using an IR LED, a Red LED, a phototransistor, and some signal proessing and ML. BPM and pulse ox can be directly found using the graph of the phototransistor's ADC values over time, and blood pressure can be found by comparing this spectrum against spectrums with known blood pressures in a medical database using a simple machine learning algorithm. We then plan to push this data to an LCD screen using an ESP32, and push it to a cloud dashboard for continual storage of medical data for future reference. 
 
 ### Instructions
 Just run `make`. (This should install dependencies as well).
@@ -19,3 +23,7 @@ Just run `make`. (This should install dependencies as well).
 None so far.
 
 **Disclaimer**: as noted above, the ESP32 manual is literally incomplete, and so if a module was not working after multiple hours of following the instructions and exhausting reasonable what-ifs, I would comb through an [ESP-IDF](https://github.com/espressif/esp-idf) implementation to see which registers were missing. None of their code survives in any form, and I thoroughly documented my code (unlike ESP-IDF!) to demonstrate understanding and help my future self out.
+
+### Demonstration
+Here is the current state of the project: https://youtube.com/shorts/ZsG0fzAm2Nc
+We have gotten the heart beat monitor to work properly with a feather in baremetal on the LCD, and are currently working on adding a pulse oximeter as the next feature!
