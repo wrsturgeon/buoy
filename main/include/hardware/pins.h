@@ -11,6 +11,12 @@
 #define FEATHER_A3 39
 #define FEATHER_A4 36
 #define FEATHER_A5 4
+#define FEATHER_SCK 5
+#define FEATHER_MOSI 19
+#define FEATHER_MISO 21
+#define FEATHER_RX 7
+#define FEATHER_TX 8
+#define FEATHER_37 37
 
 #define FEATHER_13 13
 #define FEATHER_12 12
@@ -19,7 +25,6 @@
 #define FEATHER_15 15
 #define FEATHER_32 32
 #define FEATHER_14 14
-
 #define FEATHER_SCL 20
 #define FEATHER_SDA 22
 

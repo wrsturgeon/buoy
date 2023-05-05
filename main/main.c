@@ -1,7 +1,7 @@
 //%%%%%%%%%%%%%%%% CONFIGURABLE PARAMETERS:
 // #define NDEBUG 1                  // Boolean macro
 #define USE_BUZZER 1              // Boolean macro
-#define SCREEN_FLIPPED_OVER_MCU 0 // Whether the screen is nicely aligned next to the ESP32 (=0) or flipped to lay on top of it (=1)
+#define SCREEN_FLIPPED_OVER_MCU 1 // Whether the screen is nicely aligned next to the ESP32 (=0) or flipped to lay on top of it (=1)
 #define LOG2_CYCLES_PER_SECOND 5U // e.g. `5U` -> (2^5=)32 cycles per second
 #define LOG2_ADC_SAMPLES 0U       // Set <= 4 so we use at most (2^4=)16 12-bit numbers and a 16-bit sum is juuuuust guaranteed not to overflow
 #define LOG2_HEARTBEAT_SAMPLES 4U // Also <= 4: how many heartbeats to remember in BPM calculation
