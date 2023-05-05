@@ -16,7 +16,7 @@
 _Static_assert((ADC_ATTENUATION & 3U) == ADC_ATTENUATION, "ADC attenuation must be on [0..3]");
 #define ADC_CLK_DIV 2
 #define ADC_BIT_WIDTH 12
-#define ADC_PIN 36
+#define ADC_PIN FEATHER_A4
 #define ADC_INVERT 0
 
 #define ADC_CHANNEL PASTE(PASTE(ADC1_GPIO, ADC_PIN), _CHANNEL)

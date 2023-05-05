@@ -6,7 +6,6 @@
 
 void wifi_tasks(void* /* unused */) {
   do {
-    // TODO(wrsturgeon)
     vTaskDelay(-1);
   } while (1);
 }

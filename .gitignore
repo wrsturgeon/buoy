@@ -5,3 +5,4 @@
 /sdkconfig.old
 /deps-installed
 /tidy
+/main/include/blynk-creds.h
