@@ -5,7 +5,7 @@ UPenn ESE 350 Final Project\
 Will Sturgeon & Mostafa Afr
 
 ### About
-This is a wireless finger clip that is able to take in a patient's heart rate, pulse oximetry, and blood pressure using an IR LED, a Red LED, a phototransistor, and some signal proessing and ML. BPM and pulse ox can be directly found using the graph of the phototransistor's ADC values over time, and blood pressure can be found by comparing this spectrum against spectrums with known blood pressures in a medical database using a simple machine learning algorithm. We then plan to push this data to an LCD screen using an ESP32, and push it to a cloud dashboard for continual storage of medical data for future reference. 
+This is wearable watch with a finger clip that is able to measure a patient's heart rate in real time and display the wave form and BPM on the screen of the watch!
 
 ### Instructions
 Just run `make`. (This should install dependencies as well).
